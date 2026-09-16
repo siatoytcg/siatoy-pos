@@ -1,5 +1,5 @@
 'use strict';
-const allowed=new Set(['https://nalatikana.github.io','http://localhost:8000','http://127.0.0.1:8000']);
+const allowed=new Set(['https://siatoy-pos.vercel.app','https://nalatikana.github.io','http://localhost:8000','http://127.0.0.1:8000']);
 const $=id=>document.getElementById(id);let session,job,senderOrigin,locked=false;
 function showJob(incoming){
  if(locked||!incoming||typeof incoming.id!=='string'||!/^[-a-zA-Z0-9]{1,80}$/.test(incoming.id)||!Array.isArray(incoming.codes)||incoming.codes.length<1||incoming.codes.length>500||incoming.codes.some(c=>typeof c!=='string'||!/^[\x20-\x7e]{1,24}$/.test(c)))throw Error('ข้อมูลคิวไม่ถูกต้อง');
