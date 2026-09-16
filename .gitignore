@@ -18,3 +18,4 @@ statement*.csv
 # ไดรเวอร์เครื่องพิมพ์ ไม่ต้องขึ้น repo (ไฟล์ใหญ่และ repo เป็น public)
 *.exe
 _to_delete/
+.vercel
