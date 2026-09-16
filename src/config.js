@@ -4,8 +4,8 @@
  * ห้ามเอา service_role key มาใส่ไฟล์นี้เด็ดขาด อันนั้นข้ามสิทธิ์ทั้งหมด
  */
 export const CONFIG = {
-  supabaseUrl:     'https://rtydqmzmrbxqozfgfwpm.supabase.co',
-  supabaseAnonKey: 'sb_publishable_prSKiod6syszIKhigCuorw_v3N2sDda',
+  supabaseUrl:     'https://dghsrqtsgeodwjtmrwul.supabase.co',
+  supabaseAnonKey: 'sb_publishable_mCNt270IDAaWFj7-EBiAtA_u5sXG3VN',
   shopName:  'Siatoy TCG',
   creditFee: 3,             // % ค่าธรรมเนียมบัตร ย้ายไปตาราง settings เมื่อต่อฐานข้อมูลแล้ว
   pointRate: 100,           // ทุกกี่บาทได้ 1 แต้ม

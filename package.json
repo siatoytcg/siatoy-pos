@@ -1,0 +1,27 @@
+{
+  "name": "siatoy-pos",
+  "version": "1.0.0",
+  "description": "ระบบขายหน้าร้านและจัดการสต๊อกสำหรับร้านการ์ดสะสมเสี่ยทอย TCG\r ยกมาจากเดโม `reference/Siatoy-TCG-POS-Demo.html` (ไฟล์เดียว ข้อมูลไม่ถูกบันทึก)\r ให้กลายเป็นระบบใช้จริงที่หน้าร้านกับบูธงานใช้พร้อมกันได้ และขายต่อได้ตอนเน็ตหลุด",
+  "main": "sw.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nalatikana/siatoy-pos.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nalatikana/siatoy-pos/issues"
+  },
+  "homepage": "https://github.com/nalatikana/siatoy-pos#readme",
+  "dependencies": {
+    "@supabase/server": "^1.6.1"
+  }
+}
