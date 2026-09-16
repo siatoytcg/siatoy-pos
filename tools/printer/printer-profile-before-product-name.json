@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "printerName": "4BARCODE 4B-2054B",
+  "preserveDriverStock": true,
+  "labelWidthMm": 32,
+  "labelHeightMm": 25,
+  "columns": 3,
+  "columnGapMm": 2,
+  "leftMm": 1,
+  "dpi": 203,
+  "moduleDots": 2,
+  "contentOffsetYmm": 4.8,
+  "titleYmm": 2,
+  "barcodeYmm": 6,
+  "barcodeHeightMm": 12,
+  "codeYmm": 19,
+  "fontPoints": 8,
+  "title": "TOY POS",
+  "testCodes": [
+    "TOY01",
+    "TOY02",
+    "TOY03"
+  ],
+  "observedDriverStockMm": {
+    "width": 105.92,
+    "height": 29.97
+  },
+  "validation": {
+    "previousOffsetYmm": 4,
+    "previousThreeCodesScanned": true,
+    "currentOffsetVisuallyConfirmed": true,
+    "previousTitleComplete": true,
+    "currentThreeCodesScanned": false,
+    "userApprovedLayout": true,
+    "approvalNote": "User approved latest narrower, centered print: Perfect. A separate explicit scan result for the narrowed version was not reported."
+  },
+  "contentOffsetXmm": 0.6,
+  "barcodeWidthScale": 0.9
+}

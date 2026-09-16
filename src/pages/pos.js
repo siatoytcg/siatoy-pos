@@ -284,6 +284,11 @@ function drawCart() {
     <button class="btn block owner-only" style="margin-top:8px;border-color:var(--purple-line);color:var(--purple);background:var(--purple-a2)"
       data-act="opencard">👑 เปิดการ์ด · ตัดสต๊อกไม่รับเงิน</button>
     <div class="mini" style="text-align:center;margin-top:9px">หน้าจอนี้ไม่แสดงราคาต้นทุนให้พนักงานขายเห็น</div>`;
+
+  // บนหน้าจอแคบ แผงบิลจะเป็น bottom sheet เมื่อมีสินค้าให้เปิดสรุปให้อัตโนมัติ
+  if (cart.length && window.matchMedia('(max-width: 980px)').matches) {
+    root?.querySelector('.cart-panel')?.classList.add('open');
+  }
 }
 
 /* --------------------------------------------------------------- หน้า ---- */
@@ -314,6 +319,7 @@ export const posPage = {
       <div class="cart-panel">
         <div class="cart-head" id="cartHead">
           🧾 <b>บิลปัจจุบัน</b><span class="tag gold" id="cartCount">0 ชิ้น</span>
+          <span class="cart-toggle-hint">แตะเพื่อดูสรุป</span>
           <button class="btn sm ghost right" data-act="clear">ล้างบิล</button>
         </div>
         <div class="cart-items" id="cartItems"></div>
@@ -325,6 +331,14 @@ export const posPage = {
   mount(el) {
     root = el;
     drawCart();
+
+    const cartPanel = el.querySelector('.cart-panel');
+    el.querySelector('#cartHead').addEventListener('click', e => {
+      // ปุ่มล้างบิลยังทำงานแยกจากการเปิด/ปิดแผง
+      if (e.target.closest('[data-act="clear"]')) return;
+      if (!window.matchMedia('(max-width: 980px)').matches) return;
+      cartPanel.classList.toggle('open');
+    });
 
     const takeCode = async v => { add(await findByCode(v)); };
     el.querySelector('#posCam').onclick = () => openCameraModal(takeCode);

@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "printerName": "4BARCODE 4B-2054B",
+  "preserveDriverStock": true,
+  "labelWidthMm": 32,
+  "labelHeightMm": 25,
+  "columns": 3,
+  "columnGapMm": 2,
+  "leftMm": 1,
+  "dpi": 203,
+  "moduleDots": 2,
+  "contentOffsetYmm": 4.8,
+  "titleYmm": 2,
+  "barcodeYmm": 10.8,
+  "barcodeHeightMm": 8,
+  "codeYmm": 19.8,
+  "fontPoints": 8,
+  "title": "Siatoy TCG",
+  "testCodes": [
+    "TOY01",
+    "TOY02",
+    "TOY03"
+  ],
+  "observedDriverStockMm": {
+    "width": 105.92,
+    "height": 29.97
+  },
+  "validation": {
+    "previousOffsetYmm": 4,
+    "previousThreeCodesScanned": true,
+    "currentOffsetVisuallyConfirmed": false,
+    "previousTitleComplete": true,
+    "currentThreeCodesScanned": false,
+    "userApprovedLayout": false,
+    "approvalNote": "Previous layout approved. Product-name layout requires physical verification."
+  },
+  "contentOffsetXmm": 0.6,
+  "barcodeWidthScale": 0.9,
+  "productNameYmm": 5,
+  "productNameHeightMm": 5.5,
+  "productNameFontPoints": 6.5
+}

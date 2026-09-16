@@ -5,6 +5,7 @@
  * ยิงไม่ติดเป็นบางดวง ที่นี่คำนวณความกว้างแท่งเป็นจำนวน "จุด" เต็ม ๆ ของเครื่อง
  * ตามค่าความละเอียดที่ตั้งไว้ แล้ววางบาร์โค้ดกึ่งกลางดวงแทน
  */
+import { buildPrintJob, openNativePrinter } from '../lib/native-printer.js';
 import { CONFIG } from '../config.js';
 import { money, esc, uuid, toast, openModal, closeModal } from '../lib/util.js';
 import { db, currentLocation } from '../lib/store.js';
@@ -18,7 +19,7 @@ const SIZES = {
   '60x40': { w: 60, h: 40, n: '60 × 40 มม.' },
 };
 
-let size = '30x20', mode = 'roll', pad = true, queue = [], products = [], vendors = [], root = null;
+let size = '32x25', mode = 'native', pad = true, queue = [], products = [], vendors = [], root = null;
 let show = { shop: true, name: true, code: true, price: true };
 
 const QUIET = 10;                    // โมดูลว่างซ้ายขวาตามมาตรฐาน CODE128
@@ -66,6 +67,14 @@ function nextCode() {
 }
 
 function drawPreview() {
+  const native = mode === 'native';
+  root.querySelector('#lblSize').disabled = native;
+  root.querySelectorAll('[data-show]').forEach(e => { e.disabled = native; e.closest('.field').hidden = native; });
+  if (native) {
+    root.querySelector('#lblPreview').textContent = 'Siatoy TCG · ชื่อสินค้า · บาร์โค้ด · รหัส';
+    root.querySelector('#bcQual').innerHTML = '<span class="tag green">เครื่องร้าน · 32 × 25 มม. แถวละ 3 ใบ</span><div class="mini">ใช้โปรไฟล์ที่ปรับตำแหน่งแล้ว · ความกว้าง 90% · แสดงชื่อสินค้าเหนือบาร์โค้ด · ไม่แสดงราคา<br>ตรวจลำดับรหัสทั้งชุดในหน้าต่างตัวช่วยพิมพ์ก่อนส่งงาน</div>';
+    return;
+  }
   const box = root.querySelector('#lblPreview');
   const code = val('lblCode') || nextCode();
   box.innerHTML = labelHTML({ name: val('lblName') || 'ชื่อสินค้าตัวอย่าง', code,
@@ -147,6 +156,11 @@ function sheetHTML(limitPer) {
 }
 
 function doPrint() {
+  if (mode === 'native') {
+    try { openNativePrinter(buildPrintJob(queue, pad), (message, kind) => toast(esc(message), kind)); }
+    catch (e) { toast(esc(e.message), 'err'); }
+    return;
+  }
   if (!queue.length) { toast('ยังไม่มีรายการในคิวพิมพ์', 'err'); return; }
   const s = SIZES[size];
   document.getElementById('printArea').innerHTML =
@@ -159,6 +173,7 @@ function doPrint() {
 }
 
 function previewSheet() {
+  if (mode === 'native') { doPrint(); return; }
   const s = SIZES[size];
   openModal(`
     <div class="modal-head"><h3>ตัวอย่างก่อนพิมพ์ · ${queue.reduce((a, q) => a + q.qty, 0)} ดวง</h3>
@@ -229,6 +244,7 @@ export const labelsPage = {
             </select></div>
           <div class="field"><label>เครื่องพิมพ์</label>
             <div class="seg" id="lblMode">
+              <button class="${mode === 'native' ? 'on' : ''}" data-mode="native">เครื่องร้าน · 3 ช่อง</button>
               <button class="${mode === 'roll' ? 'on' : ''}" data-mode="roll">สติกเกอร์ม้วน</button>
               <button class="${mode === 'a4' ? 'on' : ''}" data-mode="a4">กระดาษ A4</button>
             </div></div>
@@ -250,8 +266,8 @@ export const labelsPage = {
           <div class="lbl-stage"><div id="lblPreview" style="transform:scale(2);transform-origin:center center"></div></div>
           <div style="text-align:center;margin-top:12px" id="bcQual"></div>
           <div class="mini" style="text-align:center;margin-top:8px">
-            แสดงขยาย 2 เท่าเพื่อให้ดูง่าย · ความกว้างแท่งถูกปัดให้ลงตัวกับจุดของเครื่องพิมพ์แล้ว
-            เปลี่ยนค่าความละเอียดได้ที่หน้าตั้งค่าระบบ</div>
+            โหมดเครื่องร้านใช้โปรไฟล์ Windows ที่บันทึกไว้ · เปิดตัวช่วยพิมพ์ก่อนใช้งาน
+            โหมดม้วน/A4 ใช้การตั้งค่าพิมพ์ผ่านเบราว์เซอร์</div>
         </div>
         <div class="card" style="margin-top:14px">
           <div class="card-title"><span class="ic">🖨️</span> คิวพิมพ์ (พิมพ์เรียงตามลำดับนี้)
@@ -298,7 +314,7 @@ export const labelsPage = {
     el.addEventListener('click', e => {
       const m = e.target.closest('[data-mode]');
       if (m) { mode = m.dataset.mode;
-        el.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === mode)); return; }
+        el.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === mode)); drawPreview(); return; }
       const up = e.target.closest('[data-up]'), dn = e.target.closest('[data-down]'),
             dl = e.target.closest('[data-del]');
       const swap = (i, j) => { const t = queue[i]; queue[i] = queue[j]; queue[j] = t; drawQueue(); };

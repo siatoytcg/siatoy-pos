@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {buildPrintJob} from '../../src/lib/native-printer.js';
+const require=createRequire(import.meta.url),{createServer,validateJob}=require('./server.cjs');
+const job=buildPrintJob([{code:'TOY01',qty:2},{code:'TOY02',qty:1},{code:'TOY03',qty:1}]);
+const named=buildPrintJob([{code:'TOY01',name:'ซองการ์ด Pokémon',qty:2},{code:'TOY02',name:'กล่องการ์ด',qty:1}]);
+assert.deepEqual(named.names,['ซองการ์ด Pokémon','ซองการ์ด Pokémon','กล่องการ์ด']);
+validateJob(named);
+assert.throws(()=>validateJob({id:'old-pos-job',codes:['TOY01']}),/คิวไม่มีชื่อสินค้า/);
+assert.throws(()=>validateJob({...named,names:['ชื่อเดียว']}));
+assert.throws(()=>validateJob({...named,names:[123,'a','b']}));
+assert.deepEqual(job.codes,['TOY01','TOY01','TOY02','TOY03']);
+assert.equal(Math.ceil(job.codes.length/3),2);
+assert.deepEqual(buildPrintJob([{code:'8859002',qty:1}],true).codes,['08859002']);
+assert.throws(()=>buildPrintJob([{code:'TOY01',qty:1.5}]));
+assert.throws(()=>buildPrintJob([{code:'TOY01',qty:501}]));
+assert.throws(()=>buildPrintJob([{code:'ภาษาไทย',qty:1}]));
+assert.throws(()=>buildPrintJob([{code:'TOOLONG123456789',qty:1}]));
+validateJob(job);validateJob(buildPrintJob([{code:'8859002',qty:500}],true));
+assert.throws(()=>validateJob({id:'safe',codes:['bad\ntext']}));
+let calls=[];const server=createServer({run:async job=>calls.push(job)});
+await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+const origin=`http://127.0.0.1:${server.address().port}`;
+try{
+ const session=await (await fetch(origin+'/session')).json();
+ assert.equal(session.profile.barcodeWidthScale,0.9);
+ const send=(body,extra={})=>fetch(origin+'/print',{method:'POST',headers:{'Content-Type':'application/json','Origin':origin,'X-Print-Token':session.token,...extra},body:JSON.stringify(body)});
+ assert.equal((await send(job,{Origin:'https://evil.example'})).status,403);
+ assert.equal((await send(job,{'X-Print-Token':'wrong'})).status,403);
+ assert.equal((await send({id:'invalid',codes:['invalid-long-code']})).status,400);
+ assert.equal(calls.length,0);
+ const result=await send(job);assert.equal(result.status,200);assert.deepEqual(await result.json(),{labels:4,rows:2,message:'ส่งเข้าคิวเครื่องพิมพ์แล้ว'});
+ assert.deepEqual(calls[0].codes,job.codes);
+ assert.equal((await send(named)).status,200);
+ assert.deepEqual(calls[1].names,named.names);
+ assert.equal((await send(job)).status,409);assert.equal(calls.length,2);
+ console.log('PASS: queue order, copies, partial rows, numeric codes, validation, profile, origin/token checks, dispatch and duplicate prevention. No paper printed.');
+}finally{await new Promise(resolve=>server.close(resolve));}
