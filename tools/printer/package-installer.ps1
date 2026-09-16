@@ -1,5 +1,8 @@
 [CmdletBinding()]
-param([string]$Output = '')
+param(
+  [string]$Output = '',
+  [string]$DriverPackage = ''
+)
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
@@ -9,6 +12,11 @@ New-Item -ItemType Directory -Force -Path $stage | Out-Null
 try {
   $include = @('server.cjs','bridge.html','bridge.js','print-labels.ps1','label-text.ps1','patterns.json','printer-profile.json','Start-Printer.cmd','install')
   foreach ($item in $include) { Copy-Item -LiteralPath (Join-Path $root $item) -Destination $stage -Recurse -Force }
+  if ($DriverPackage) {
+    if (-not (Test-Path -LiteralPath $DriverPackage)) { throw "Driver package not found: $DriverPackage" }
+    New-Item -ItemType Directory -Force -Path (Join-Path $stage 'vendor') | Out-Null
+    Copy-Item -LiteralPath $DriverPackage -Destination (Join-Path $stage 'vendor\4BARCODE_2024.2_M-3.zip') -Force
+  }
   $node = Get-Command node.exe -ErrorAction SilentlyContinue
   if ($node) {
     New-Item -ItemType Directory -Force -Path (Join-Path $stage 'runtime') | Out-Null

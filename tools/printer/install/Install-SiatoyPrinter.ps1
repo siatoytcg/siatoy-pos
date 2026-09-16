@@ -29,9 +29,26 @@ New-Item -ItemType Directory -Force -Path $installRoot | Out-Null
 foreach ($name in $required) {
   Copy-Item -LiteralPath (Join-Path $SourceRoot $name) -Destination $installRoot -Force
 }
+$vendor = Join-Path $SourceRoot 'vendor'
+if (Test-Path -LiteralPath $vendor) {
+  Copy-Item -LiteralPath $vendor -Destination $installRoot -Recurse -Force
+}
 if (Test-Path -LiteralPath $bundledNode) {
   New-Item -ItemType Directory -Force -Path (Join-Path $installRoot 'runtime') | Out-Null
   Copy-Item -LiteralPath $bundledNode -Destination (Join-Path $installRoot 'runtime\node.exe') -Force
+}
+
+$bundledDriver = Join-Path $SourceRoot 'vendor\4BARCODE_2024.2_M-3.zip'
+if ((-not $DriverInf) -and (Test-Path -LiteralPath $bundledDriver)) {
+  $driverTemp = Join-Path ([IO.Path]::GetTempPath()) ('siatoy-driver-' + [guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Force -Path $driverTemp | Out-Null
+  Expand-Archive -LiteralPath $bundledDriver -DestinationPath $driverTemp -Force
+  $driverExe = Get-ChildItem -LiteralPath $driverTemp -Filter '*.exe' -File -Recurse | Select-Object -First 1
+  if ($driverExe) {
+    Write-Host 'Launching the bundled 4BARCODE driver installer...'
+    Start-Process -FilePath $driverExe.FullName -Wait
+  }
+  Remove-Item -LiteralPath $driverTemp -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 if ($DriverInf) {
