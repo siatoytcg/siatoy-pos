@@ -43,7 +43,7 @@ reference/  เดโมตั้งต้นและโลโก้  ไว้
 ## เปิดใช้งาน
 
 หน้าเว็บเป็นไฟล์นิ่งล้วน วางที่ไหนก็เปิดได้ ตอนนี้ตั้ง GitHub Pages ไว้ที่ branch `master` โฟลเดอร์ราก
-เมื่อ push ขึ้นไปแล้วจะเปิดได้ที่ `https://nalatikana.github.io/siatoy-pos/`
+เมื่อเชื่อม repository นี้กับ Vercel แล้ว ให้ใช้ URL deployment ของ Vercel เป็นเว็บหลักได้ทันที (ระบบใช้ hash routing จึงไม่ต้องมี backend server ฝั่ง Vercel) เครื่องที่พิมพ์ต้องเปิด Printer Helper ในเครื่อง Windows เดียวกับ POS ตาม [คู่มือเชื่อมเครื่องพิมพ์](docs/printer-integration.md)
 
 เปิดในเครื่องเพื่อพัฒนา (ต้องเปิดผ่าน http ไม่ใช่ดับเบิลคลิกไฟล์ เพราะใช้ ES module)
 
