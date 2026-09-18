@@ -15,7 +15,8 @@ export const baht = n =>
   Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 export const thaiDate = d => {
-  const dt = typeof d === 'string' ? new Date(d + 'T00:00:00') : d;
+  // daily_summary อาจคืน date เป็น null เมื่อยังไม่มีรายการในวันนั้น
+  const dt = d ? (typeof d === 'string' ? new Date(d + 'T00:00:00') : d) : new Date();
   return dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
 };
 
