@@ -6,6 +6,7 @@
 import { money, esc, uuid, toast, redrawPage } from '../lib/util.js';
 import { db, stockMap, findByCode, currentLocation, deviceId } from '../lib/store.js';
 import { S } from '../lib/state.js';
+import { push as syncNow } from '../lib/sync.js';
 import { attachWedge, keepFocus, openCameraModal } from '../lib/scanner.js';
 
 const OUT_REASONS = [
@@ -108,6 +109,8 @@ async function commit() {
   list = [];
   toast((mode === 'in' ? 'รับเข้าคลัง ' : 'ตัดออกจากคลัง ') + n + ' ชิ้น · บันทึกผู้ทำรายการและเวลาแล้ว', 'ok');
   document.dispatchEvent(new CustomEvent('siatoy:changed'));
+  const synced = await syncNow();
+  if (synced.failed) { toast('บันทึกขึ้น Supabase ไม่สำเร็จ: ' + synced.failed, 'err'); return; }
   location.reload();
 }
 

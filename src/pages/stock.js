@@ -6,7 +6,7 @@ import { money, esc, toast, openModal, closeModal, uuid } from '../lib/util.js';
 import { db, stockMap, currentLocation } from '../lib/store.js';
 import { S } from '../lib/state.js';
 import { hasBackend } from '../config.js';
-import { currentUser } from '../lib/sync.js';
+import { currentUser, push as syncNow } from '../lib/sync.js';
 
 let products = [], vendors = [], sets = [], stock = new Map(), all = new Map();
 let q = '', cat = 'ทั้งหมด', root = null, loc = null;
@@ -108,6 +108,8 @@ function editProduct(id) {
     }
     closeModal();
     document.dispatchEvent(new CustomEvent('siatoy:changed'));
+    const synced = await syncNow();
+    if (synced.failed) { toast('บันทึกขึ้น Supabase ไม่สำเร็จ: ' + synced.failed, 'err'); return; }
     location.reload();
   };
 }

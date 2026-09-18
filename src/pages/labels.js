@@ -10,7 +10,7 @@ import { CONFIG, hasBackend } from '../config.js';
 import { money, esc, uuid, toast, openModal, closeModal } from '../lib/util.js';
 import { db, currentLocation } from '../lib/store.js';
 import { encode128, padEven, svg128 } from '../lib/code128.js';
-import { currentUser } from '../lib/sync.js';
+import { currentUser, push as syncNow } from '../lib/sync.js';
 
 const SIZES = {
   '30x20': { w: 30, h: 20, n: '30 × 20 มม. (ของร้าน)' },
@@ -145,6 +145,8 @@ async function addToQueue() {
       products = await db.products.toArray();
       toast('เพิ่ม <b>' + esc(name.slice(0, 24)) + '</b> เข้าคลังแล้ว (สต๊อก ' + qty + ')', 'ok');
       document.dispatchEvent(new CustomEvent('siatoy:changed'));
+      const synced = await syncNow();
+      if (synced.failed) throw new Error('บันทึกขึ้น Supabase ไม่สำเร็จ: ' + synced.failed);
     }
   }
 

@@ -8,6 +8,7 @@ import { db, stockMap, findByCode, commitSale, currentLocation } from '../lib/st
 import { CATEGORIES } from '../lib/seed.js';
 import { attachWedge, keepFocus, openCameraModal, beep } from '../lib/scanner.js';
 import { S } from '../lib/state.js';
+import { push as syncNow } from '../lib/sync.js';
 
 let products = [], stock = new Map(), members = [], loc = null;
 let cart = [], pay = 'cash', billDiscount = 0, billDiscountType = 'baht',
@@ -220,6 +221,8 @@ async function doPay(openCard) {
   $('#modalBox').querySelector('#mNew').onclick = closeModal;
   drawCart(); drawGrid();
   document.dispatchEvent(new CustomEvent('siatoy:changed'));
+  const synced = await syncNow();
+  if (synced.failed) { toast('บันทึกบิลขึ้น Supabase ไม่สำเร็จ: ' + synced.failed, 'err'); return; }
   const inp = root && root.querySelector('#scanInput'); if (inp) inp.focus();
 }
 
