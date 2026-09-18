@@ -43,6 +43,8 @@ async function load() {
   locs = await db.locations.toArray();
   products = await db.products.toArray();
   sales = await db.sales.toArray();
+  // ฐานข้อมูลใหม่อาจยังไม่มีข้อมูลหลังติดตั้ง ให้แสดงหน้าว่างพร้อมปุ่มเพิ่มบูธแทนจอขาว
+  if (!locs.length) locs = [here];
   byLoc = {};
   for (const l of locs) byLoc[l.id] = await stockMap(l.id);
   if (!sel || !locs.find(l => l.id === sel)) {
