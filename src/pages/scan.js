@@ -79,8 +79,9 @@ async function commit() {
   if (mode === 'in') {
     const ven = root.querySelector('#scVendor').value;
     const po  = root.querySelector('#scPO').value.trim() || null;
+    const vendor_payout = Number(root.querySelector('#scVendorPay')?.value) || 0;
     list.forEach(l => moves.push({ id: uuid(), product_id: l.id, location_id: loc.id, qty: l.qty,
-      move_type: 'purchase', ref_id: docId, ref_no: po, reason: 'รับเข้าจาก ' + ((vendors.find(v => v.id === ven) || {}).name || '-'),
+      move_type: 'purchase', ref_id: docId, ref_no: po, reason: 'รับเข้าจาก ' + ((vendors.find(v => v.id === ven) || {}).name || '-'), vendor_id: ven || null, vendor_payout,
       created_by_name: by, device_id: dev, created_at: now }));
   } else {
     const r = OUT_REASONS.find(x => x.k === root.querySelector('#scReason').value);
@@ -138,7 +139,9 @@ export const scanPage = {
               <select class="inp" id="scVendor"><option value="">ของร้านเอง / ไม่ใช่ฝากขาย</option>${vendors.map(v =>
                 `<option value="${v.id}">${esc(v.code)} · ${esc(v.name)}</option>`).join('')}</select></div>
             <div class="field" style="margin:0"><label>เลขที่เอกสารรับเข้า (PO)</label>
-              <input class="inp" id="scPO" placeholder="เช่น PO-260901-01"></div>`
+              <input class="inp" id="scPO" placeholder="เช่น PO-260901-01"></div>
+            <div class="field" style="margin:0;grid-column:1/-1"><label>ยอดที่ต้องจ่ายคืนผู้ฝาก (ถ้ามี)</label>
+              <input class="inp" id="scVendorPay" type="number" min="0" step="0.01" placeholder="ของร้านเองเว้นว่างได้"></div>`
             : `
             <div class="field" style="margin:0"><label>เหตุผลการตัดออก</label>
               <select class="inp" id="scReason">${OUT_REASONS.map(r =>
