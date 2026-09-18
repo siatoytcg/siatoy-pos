@@ -29,8 +29,7 @@ async function load() {
 
 function settlement(v) {
   const s = soldBy.get(v.id) || { amount: 0, qty: 0 };
-  const commission = Math.round(s.amount * v.commission_pct) / 100;
-  return { ...s, commission, payable: s.amount - commission };
+  return { ...s, commission: 0, payable: s.amount };
 }
 
 function showSettlement(id) {
@@ -40,12 +39,12 @@ function showSettlement(id) {
   openModal(`
     <div class="modal-head"><h3>สรุปรอบจ่าย · ${esc(v.name)}</h3><button class="x" id="mClose">✕</button></div>
     <div class="modal-body">
-      <div class="mini" style="margin-bottom:12px">รอบ ${esc(monthLabel)} · คอมมิชชัน ${v.commission_pct}%</div>
+      <div class="mini" style="margin-bottom:12px">รอบ ${esc(monthLabel)}</div>
       <div class="grid g3" style="gap:10px;margin-bottom:14px">
         <div class="stat"><div class="lbl">ขายได้</div><div class="val g">฿ ${money(st.amount)}</div>
           <div class="sub">${st.qty} ชิ้น</div></div>
-        <div class="stat"><div class="lbl">ค่าคอมของร้าน</div>
-          <div class="val green">฿ ${money(st.commission)}</div><div class="sub">${v.commission_pct}%</div></div>
+        <div class="stat"><div class="lbl">ส่วนต่างร้าน</div>
+          <div class="val green">฿ ${money(st.commission)}</div><div class="sub">คำนวณจากรายการรับเข้า</div></div>
         <div class="stat"><div class="lbl">ต้องจ่ายคืน</div><div class="val">฿ ${money(st.payable)}</div>
           <div class="sub">ยอดสุทธิ</div></div>
       </div>
@@ -68,10 +67,7 @@ function addVendor() {
   openModal(`
     <div class="modal-head"><h3>เพิ่มผู้ฝากขาย</h3><button class="x" id="mClose">✕</button></div>
     <div class="modal-body">
-      <div class="grid g2" style="gap:9px">
-        <div class="field"><label>รหัส</label><input class="inp" id="nvCode" placeholder="เช่น 005"></div>
-        <div class="field"><label>คอมมิชชัน (%)</label><input class="inp" id="nvComm" type="number" value="15"></div>
-      </div>
+      <div class="field"><label>รหัส</label><input class="inp" id="nvCode" placeholder="เช่น 005"></div>
       <div class="field"><label>ชื่อผู้ฝากขาย</label><input class="inp" id="nvName"></div>
       <div class="field" style="margin:0"><label>เบอร์โทร</label><input class="inp" id="nvTel"></div>
     </div>
@@ -85,7 +81,7 @@ function addVendor() {
     if (!code || !name) { toast('กรอกรหัสและชื่อให้ครบ', 'err'); return; }
     await db.vendors.put({ id: 'ven-' + code, code, name,
       tel: box.querySelector('#nvTel').value.trim() || '-',
-      commission_pct: Number(box.querySelector('#nvComm').value) || 0,
+      commission_pct: 0,
       started_on: new Date().toISOString().slice(0, 10), is_active: true });
     closeModal(); location.reload();
   };
@@ -97,7 +93,7 @@ export const vendorsPage = {
     return `
     <div class="page-head">
       <div><h1>ผู้ฝากขาย (Consignment)</h1>
-        <p>ของฝากขายหลายเจ้า · แยกยอดและคิดค่าคอมมิชชันรายเจ้า · รอบ ${esc(monthLabel)}</p></div>
+        <p>ของฝากขายหลายเจ้า · ดูยอดขายและยอดที่ต้องจ่ายคืนรายเจ้า · รอบ ${esc(monthLabel)}</p></div>
       <div class="spacer"></div>
       <button class="btn gold sup-up" id="venAdd">+ เพิ่มผู้ฝากขาย</button>
     </div>
@@ -111,7 +107,7 @@ export const vendorsPage = {
         return `<div class="card">
           <div class="card-title"><span class="ic">🤝</span>
             <b style="font-weight:500">${esc(v.code)}</b> · ${esc(v.name)}
-            <span class="sub">คอม ${v.commission_pct}%</span></div>
+            <span class="sub">ฝากขาย</span></div>
           <div class="mini" style="margin-bottom:12px">โทร ${esc(v.tel || '-')}
             ${v.started_on ? ' · เริ่มฝากขาย ' + esc(v.started_on) : ''}</div>
           <div class="grid g3" style="gap:9px;margin-bottom:12px">
@@ -124,7 +120,7 @@ export const vendorsPage = {
           <div class="bar" style="margin-bottom:6px"><i style="width:${pct}%"></i></div>
           <div class="mini" style="margin-bottom:10px">ขายไปแล้ว ${pct}% ของที่เคยมีในเดือนนี้</div>
           <div class="flex sup-up" style="font-size:12.5px;color:var(--muted)">
-            <span>ค่าคอมมิชชันที่ร้านได้</span>
+            <span>ส่วนต่างร้าน</span>
             <b class="right" style="color:var(--green);font-weight:400">฿ ${money(st.commission)}</b></div>
           <div class="flex sup-up" style="font-size:12.5px;color:var(--muted);margin-top:3px">
             <span>ยอดต้องจ่ายคืนผู้ฝากขาย</span>
