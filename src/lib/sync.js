@@ -228,6 +228,29 @@ export async function pull() {
   return { ok: true, counts };
 }
 
+/* แก้ข้อมูลตั้งต้นที่ถูกสร้างซ้ำจากคิวรุ่นเก่า ใช้ครั้งเดียวกับสินค้า 8859001 */
+export async function normalizeInitialStock(barcode, qty) {
+  if (!sb || !user) return false;
+  const { data: product } = await sb.from('products').select('id,sku').eq('sku', barcode).maybeSingle();
+  if (!product) return false;
+  const { data: moves, error } = await sb.from('stock_moves').select('id,location_id,move_type,qty')
+    .eq('product_id', product.id).eq('move_type', 'opening');
+  if (error || !moves || moves.length < 2) return false;
+  const target = Number(qty);
+  const total = moves.reduce((n, m) => n + Number(m.qty || 0), 0);
+  if (total === target) return false;
+  const locationId = moves[0].location_id;
+  const del = await sb.from('stock_moves').delete().eq('product_id', product.id).eq('move_type', 'opening');
+  if (del.error) throw new Error(del.error.message);
+  const ins = await sb.from('stock_moves').insert({
+    id: crypto.randomUUID(), product_id: product.id, location_id: locationId,
+    qty: target, move_type: 'opening', ref_no: 'ยอดตั้งต้น (แก้รายการซ้ำ)',
+    created_at: new Date().toISOString(), created_by: user.id,
+  });
+  if (ins.error) throw new Error(ins.error.message);
+  return true;
+}
+
 /* -------------------------------------------------------------- ขาออก ---- */
 /* ตัดฟิลด์ที่มีเฉพาะฝั่งเครื่องออก ไม่งั้น PostgREST จะปฏิเสธทั้งก้อน */
 const pick = (o, keys) => Object.fromEntries(keys.filter(k => o[k] !== undefined).map(k => [k, o[k]]));

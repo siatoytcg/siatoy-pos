@@ -21,7 +21,7 @@ import { usersPage } from './pages/users.js';
 import { openHelp, maybeShowFirstTime } from './pages/help.js';
 import { lockNow, startAutoLock, hasPin } from './lib/lock.js';
 import { initClient, currentProfile, currentUser, signOut, pull, push,
-         startAutoSync, switchToLiveData, logEvent } from './lib/sync.js';
+         startAutoSync, switchToLiveData, logEvent, normalizeInitialStock } from './lib/sync.js';
 
 const ROUTES = {
   pos: posPage, bills: billsPage, labels: labelsPage, settings: settingsPage,
@@ -175,6 +175,9 @@ async function boot() {
     if (beforePull.failed) toast('ส่งข้อมูลที่ค้างไม่สำเร็จ · ' + beforePull.failed, 'err');
     const r = await pull();
     if (!r.ok) toast('ดึงข้อมูลจากเซิร์ฟเวอร์ไม่สำเร็จ · ' + r.reason, 'err');
+    try {
+      if (await normalizeInitialStock('8859001', 260)) await pull();
+    } catch (e) { toast('แก้ข้อมูลตั้งต้นไม่สำเร็จ · ' + e.message, 'err'); }
     startAutoSync(res => { toast('ส่งขึ้นเซิร์ฟเวอร์แล้ว ' + res.sent + ' รายการ', 'ok'); drawSync(); });
   }
   const loc = await currentLocation();
