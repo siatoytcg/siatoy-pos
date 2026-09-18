@@ -181,7 +181,15 @@ export const billsPage = {
 
   mount(el) {
     root = el;
-    el.querySelector('#billExport').onclick = async () => { const rows=[]; for (const b of bills) for (const it of await db.sale_items.where('sale_id').equals(b.id).toArray()) rows.push([b.bill_no,b.created_by_name||'-',it.sku,it.product_name,it.qty,it.unit_price,it.unit_cost||0,it.line_total,b.status]); downloadExcel('siatoy-bills.xls',[{name:'รายการขาย',headers:['เลขบิล','ผู้ขาย','SKU','สินค้า','จำนวน','ราคาขาย','ต้นทุน','รวม','สถานะ'],rows}]); };
+    const exportBtn = el.querySelector('#billExport');
+    if (exportBtn) exportBtn.onclick = async () => {
+      const rows = [];
+      for (const b of bills) for (const it of await db.sale_items.where('sale_id').equals(b.id).toArray())
+        rows.push([b.bill_no, b.created_by_name || '-', it.sku, it.product_name, it.qty,
+          it.unit_price, it.unit_cost || 0, it.line_total, b.status]);
+      downloadExcel('siatoy-bills.xls', [{ name: 'รายการขาย',
+        headers: ['เลขบิล','ผู้ขาย','SKU','สินค้า','จำนวน','ราคาขาย','ต้นทุน','รวม','สถานะ'], rows }]);
+    };
     el.addEventListener('click', async e => {
       const r = e.target.closest('[data-range]');
       if (r) { range = r.dataset.range; customFrom = customTo = ''; await redrawPage(el, billsPage); return; }
