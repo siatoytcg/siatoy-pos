@@ -2,7 +2,7 @@
  * เก็บไฟล์แอปไว้ในเครื่องแบบ cache-first  ส่วนข้อมูลขายอยู่ใน IndexedDB ไม่เกี่ยวกับที่นี่
  * ขึ้นเวอร์ชันทุกครั้งที่แก้ไฟล์ในรายการ ไม่งั้นเครื่องที่เคยเปิดแล้วจะยังใช้ของเก่า
  */
-const VERSION = 'siatoy-v14-pos-cart-sheet';
+const VERSION = 'siatoy-v15-logout-cache';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './src/styles.css', './src/app.js', './src/config.js',
