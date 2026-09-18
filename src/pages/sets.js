@@ -113,7 +113,6 @@ export const setsPage = {
               <div class="mini" style="min-width:44px;text-align:right">×${all.get(p.id) || 0}</div></div>`).join('')
               : '<div class="mini">ยังไม่มีสินค้าในเซตนี้</div>'}
           </div>
-          <button class="btn block sup-up" data-set="${s.id}">✏️ ปรับราคาทั้งเซต</button>
         </div>`;
       }).join('')}
     </div>`;
