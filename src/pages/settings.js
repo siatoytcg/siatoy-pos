@@ -59,7 +59,6 @@ export const settingsPage = {
             </select></div>
           <div class="notice info" style="margin:0">เครื่องแต่ละเครื่องตั้งจุดขายของตัวเอง
             บิลและการเดินของจะถูกบันทึกเข้าจุดขายนี้ ทำให้แยกยอดหน้าร้านกับบูธงานออกจากกันได้</div>
-          <button class="btn block" style="margin-top:12px" id="setAddLoc">+ เพิ่มจุดขาย (บูธงานใหม่)</button>
         </div>
 
         <div class="card" style="margin-top:14px">
@@ -211,33 +210,6 @@ export const settingsPage = {
         x.classList.toggle('on', Number(x.dataset.dpi) === CONFIG.printerDpi));
       drawDpi();
       toast('ตั้งความละเอียดเครื่องพิมพ์เป็น ' + CONFIG.printerDpi + ' dpi', 'ok');
-    };
-
-    el.querySelector('#setAddLoc').onclick = () => {
-      openModal(`
-        <div class="modal-head"><h3>เพิ่มจุดขาย</h3><button class="x" id="mClose">✕</button></div>
-        <div class="modal-body">
-          <div class="field"><label>ชื่อจุดขาย</label>
-            <input class="inp" id="nlName" placeholder="เช่น บูธ Bangkok TCG Fest"></div>
-          <div class="field"><label>รหัสสั้น (ใช้ในเลขบิล ตัวอักษรอังกฤษ/ตัวเลข)</label>
-            <input class="inp" id="nlCode" placeholder="เช่น FEST02"></div>
-          <div class="field" style="margin:0"><label>ประเภท</label>
-            <select class="inp" id="nlKind"><option value="event">บูธงานอีเวนต์</option>
-              <option value="shop">หน้าร้าน / สาขา</option></select></div>
-        </div>
-        <div class="modal-foot"><button class="btn ghost" id="mNo">ยกเลิก</button>
-          <button class="btn gold" id="mOk">เพิ่ม</button></div>`);
-      const box = document.getElementById('modalBox');
-      box.querySelector('#mClose').onclick = box.querySelector('#mNo').onclick = closeModal;
-      box.querySelector('#mOk').onclick = async () => {
-        const name = box.querySelector('#nlName').value.trim();
-        const code = box.querySelector('#nlCode').value.trim().toUpperCase();
-        if (!name || !code) { toast('กรอกชื่อและรหัสให้ครบ', 'err'); return; }
-        await db.locations.put({ id: 'loc-' + code.toLowerCase(), code, name,
-          kind: box.querySelector('#nlKind').value });
-        closeModal(); toast('เพิ่มจุดขาย ' + esc(name) + ' แล้ว', 'ok');
-        location.reload();
-      };
     };
 
     el.addEventListener('click', async e => {

@@ -8,6 +8,29 @@ import { S } from '../lib/state.js';
 
 let locs = [], products = [], here = null, sel = null, byLoc = {}, sales = [];
 
+function addBooth() {
+  openModal(`
+    <div class="modal-head"><h3>เพิ่มจุดขายบูธงาน</h3><button class="x" id="mClose">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>ชื่อบูธ / งาน</label>
+        <input class="inp" id="nlName" placeholder="เช่น บูธ Bangkok TCG Fest"></div>
+      <div class="field" style="margin:0"><label>รหัสสั้น (ใช้ในเลขบิล ตัวอักษรอังกฤษ/ตัวเลข)</label>
+        <input class="inp" id="nlCode" placeholder="เช่น FEST02"></div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" id="mNo">ยกเลิก</button>
+      <button class="btn gold" id="mOk">เพิ่มบูธ</button></div>`);
+  const box = document.getElementById('modalBox');
+  box.querySelector('#mClose').onclick = box.querySelector('#mNo').onclick = closeModal;
+  box.querySelector('#mOk').onclick = async () => {
+    const name = box.querySelector('#nlName').value.trim();
+    const code = box.querySelector('#nlCode').value.trim().toUpperCase();
+    if (!name || !code) { toast('กรอกชื่อบูธและรหัสให้ครบ', 'err'); return; }
+    if (await db.locations.where('code').equals(code).first()) { toast('รหัสจุดขายนี้มีอยู่แล้ว', 'err'); return; }
+    await db.locations.put({ id: 'loc-' + code.toLowerCase(), code, name, kind: 'event', is_active: true });
+    closeModal(); toast('เพิ่มบูธ ' + esc(name) + ' แล้ว', 'ok'); location.reload();
+  };
+}
+
 async function load() {
   here = await currentLocation();
   locs = await db.locations.toArray();
@@ -102,12 +125,13 @@ export const eventPage = {
     const evs  = locs.filter(l => l.kind === 'event');
     const s = locs.find(l => l.id === sel);
 
+    const summaryLocs = s && s.kind === 'event' ? [shop, s] : [shop];
     return `
     <div class="page-head"><div><h1>สต๊อกออกงานอีเวนต์</h1>
       <p>บูธงานคือจุดขายอีกจุดหนึ่ง ของที่ยกไปยังอยู่ในระบบและรับกลับได้ครบ</p></div></div>
 
     <div class="grid g2" style="margin-bottom:16px">
-      ${[shop, s].filter(Boolean).map(l => {
+      ${summaryLocs.filter(Boolean).map(l => {
         const st = locStats(l.id);
         const qty = [...(byLoc[l.id] || new Map()).values()].reduce((a, q) => a + q, 0);
         return `<div class="card" ${l.kind === 'event' ? 'style="border-color:var(--gold-line)"' : ''}>
@@ -121,6 +145,9 @@ export const eventPage = {
           </div>
         </div>`;
       }).join('')}
+      ${!evs.length ? `<button class="card" id="addBooth" style="border:1px dashed var(--gold-line);cursor:pointer;text-align:left">
+        <div class="card-title"><span class="ic">➕</span> เพิ่มจุดขายบูธงาน</div>
+        <div class="mini">สร้างบูธใหม่เพื่อย้ายสต๊อกและแยกยอดขายจากหน้าร้าน</div></button>` : ''}
     </div>
 
     ${evs.length ? `
@@ -146,7 +173,7 @@ export const eventPage = {
       <button class="btn" data-back-btn="${sel}">📥 รับของกลับเข้าคลัง</button>
     </div>`
     : `<div class="card"><div class="cart-empty"><span class="big">🎪</span>
-        ยังไม่มีจุดขายแบบบูธงาน<br>เพิ่มได้ที่หน้าตั้งค่าระบบ</div></div>`}`;
+        ยังไม่มีจุดขายแบบบูธงาน<br>กดปุ่มเพิ่มจุดขายด้านบนเพื่อเริ่มต้น</div></div>`}`;
   },
 
   mount(el) {
@@ -155,6 +182,7 @@ export const eventPage = {
       if (l) { sel = l.dataset.loc; await redrawPage(el, eventPage); return; }
       const b = e.target.closest('[data-back-btn]');
       if (b) bringBack(b.dataset.backBtn);
+      if (e.target.closest('#addBooth')) addBooth();
     });
   },
 };
