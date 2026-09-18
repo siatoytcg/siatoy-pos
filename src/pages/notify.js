@@ -112,8 +112,8 @@ async function sendNow(el) {
     if (hasBackend() && currentUser()) {
       const r = await invoke('notify', { channel: cfg.channel });
       const bits = [];
-      if (r.line)     bits.push('LINE: ' + (r.line.ok ? 'ส่งแล้ว' : (r.line.skipped || r.line.error)));
-      if (r.telegram) bits.push('Telegram: ' + (r.telegram.ok ? 'ส่งแล้ว' : (r.telegram.skipped || r.telegram.error)));
+      if ((cfg.channel === 'line' || cfg.channel === 'both') && r.line) bits.push('LINE: ' + (r.line.ok ? 'ส่งแล้ว' : (r.line.skipped || r.line.error)));
+      if ((cfg.channel === 'telegram' || cfg.channel === 'both') && r.telegram) bits.push('Telegram: ' + (r.telegram.ok ? 'ส่งแล้ว' : (r.telegram.skipped || r.telegram.error)));
       toast(bits.join('<br>') || 'ส่งแล้ว', r.line?.ok || r.telegram?.ok ? 'ok' : 'err');
     } else if (cfg.channel === 'telegram' || cfg.channel === 'both') {
       const sum = await localSummary();
@@ -240,3 +240,4 @@ export const notifyPage = {
     el.querySelector('#nfSend').onclick = () => sendNow(el);
   },
 };
+
