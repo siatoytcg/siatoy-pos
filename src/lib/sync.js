@@ -236,7 +236,7 @@ export async function normalizeInitialStock(barcode, qty) {
   const { data: moves, error } = await sb.from('stock_moves').select('id,location_id,move_type,qty,ref_no')
     .eq('product_id', product.id);
   if (error || !moves || moves.length < 2) return false;
-  if (moves.some(m => m.ref_no === 'ยอดตั้งต้น (รีเซ็ตเป็น 260)')) return false;
+  if (moves.some(m => m.ref_no === 'ยอดตั้งต้น (เหลือ 260 ชิ้น)')) return false;
   const target = Number(qty);
   const total = moves.reduce((n, m) => n + Number(m.qty || 0), 0);
   if (total === target) return false;
@@ -245,7 +245,7 @@ export async function normalizeInitialStock(barcode, qty) {
   if (del.error) throw new Error(del.error.message);
   const ins = await sb.from('stock_moves').insert({
     id: crypto.randomUUID(), product_id: product.id, location_id: locationId,
-    qty: target, move_type: 'opening', ref_no: 'ยอดตั้งต้น (รีเซ็ตเป็น 260)',
+    qty: target, move_type: 'opening', ref_no: 'ยอดตั้งต้น (เหลือ 260 ชิ้น)',
     created_at: new Date().toISOString(), created_by: user.id,
   });
   if (ins.error) throw new Error(ins.error.message);
