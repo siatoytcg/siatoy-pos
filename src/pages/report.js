@@ -6,7 +6,15 @@ import { money, esc, redrawPage } from '../lib/util.js';
 import { db } from '../lib/store.js';
 import { S } from '../lib/state.js';
 
-let range = 'today', data = null;
+let range = 'today', data = null, customFrom = '', customTo = '';
+
+const customBounds = () => {
+  if (!customFrom && !customTo) return null;
+  return {
+    from: customFrom ? new Date(`${customFrom}T00:00:00`) : new Date(0),
+    to: customTo ? new Date(`${customTo}T23:59:59.999`) : new Date(),
+  };
+};
 
 const startOf = r => {
   const d = new Date(); d.setHours(0, 0, 0, 0);
@@ -16,8 +24,10 @@ const startOf = r => {
 };
 
 async function load() {
-  const from = startOf(range).toISOString();
-  const sales = (await db.sales.toArray()).filter(s => s.client_created_at >= from);
+  const custom = customBounds();
+  const from = custom ? custom.from : startOf(range);
+  const to = custom ? custom.to : new Date(8640000000000000);
+  const sales = (await db.sales.toArray()).filter(s => { const at = new Date(s.client_created_at); return at >= from && at <= to; });
   const ok = sales.filter(s => s.status === 'normal');
   const okIds = new Set(ok.map(s => s.id));
   const products = await db.products.toArray();
@@ -53,13 +63,20 @@ export const reportPage = {
     await load();
     const d = data;
     const gross = d.revenue - d.cost;
-    const label = { today: 'วันนี้', '7d': '7 วันล่าสุด', month: 'เดือนนี้' }[range];
+    const label = customBounds() ? `ช่วง ${customFrom || 'เริ่มต้น'} ถึง ${customTo || 'ปัจจุบัน'}` : { today: 'วันนี้', '7d': '7 วันล่าสุด', month: 'เดือนนี้' }[range];
     const bar = (v, max, color) => `<div class="bar"><i style="width:${max ? Math.round(v / max * 100) : 0}%;background:${color}"></i></div>`;
 
     return `
     <div class="page-head">
       <div><h1>รายงานสรุป</h1><p>${label} · ${d.sales.length} บิล</p></div>
       <div class="spacer"></div>
+      <div class="flex wrap" style="gap:6px;margin-right:10px">
+        <input class="inp" type="date" id="reportFrom" value="${customFrom}">
+        <span class="mini" style="align-self:center">ถึง</span>
+        <input class="inp" type="date" id="reportTo" value="${customTo}">
+        <button class="btn" data-custom="1">ดูช่วงวันที่</button>
+        ${customBounds() ? '<button class="btn ghost" data-clear-date="1">ล้าง</button>' : ''}
+      </div>
       <div class="seg">${[['today','วันนี้'],['7d','7 วัน'],['month','เดือนนี้']].map(([k,n]) =>
         `<button class="${range === k ? 'on' : ''}" data-r="${k}">${n}</button>`).join('')}</div>
     </div>
@@ -121,7 +138,13 @@ export const reportPage = {
   mount(el) {
     el.addEventListener('click', async e => {
       const r = e.target.closest('[data-r]');
-      if (r) { range = r.dataset.r; await redrawPage(el, reportPage); }
+      if (r) { range = r.dataset.r; customFrom = customTo = ''; await redrawPage(el, reportPage); return; }
+      if (e.target.closest('[data-custom]')) {
+        customFrom = el.querySelector('#reportFrom').value; customTo = el.querySelector('#reportTo').value;
+        if (customFrom && customTo && customFrom > customTo) { alert('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด'); return; }
+        range = 'custom'; await redrawPage(el, reportPage); return;
+      }
+      if (e.target.closest('[data-clear-date]')) { customFrom = customTo = ''; range = 'today'; await redrawPage(el, reportPage); }
     });
   },
 };

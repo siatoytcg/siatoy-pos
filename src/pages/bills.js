@@ -6,7 +6,14 @@ import { money, esc, toast, openModal, closeModal, redrawPage } from '../lib/uti
 import { db, voidSale } from '../lib/store.js';
 import { S } from '../lib/state.js';
 
-let range = 'today', root = null, bills = [];
+let range = 'today', root = null, bills = [], customFrom = '', customTo = '';
+
+const customBounds = () => {
+  if (!customFrom && !customTo) return null;
+  const from = customFrom ? new Date(`${customFrom}T00:00:00`) : new Date(0);
+  const to = customTo ? new Date(`${customTo}T23:59:59.999`) : new Date();
+  return { from, to };
+};
 
 const startOf = r => {
   const d = new Date(); d.setHours(0, 0, 0, 0);
@@ -16,9 +23,11 @@ const startOf = r => {
 };
 
 async function load() {
-  const from = startOf(range).toISOString();
+  const custom = customBounds();
+  const from = custom ? custom.from : startOf(range);
+  const to = custom ? custom.to : new Date(8640000000000000);
   bills = (await db.sales.toArray())
-    .filter(b => b.client_created_at >= from)
+    .filter(b => { const at = new Date(b.client_created_at); return at >= from && at <= to; })
     .sort((a, b) => b.client_created_at.localeCompare(a.client_created_at));
 }
 
@@ -114,12 +123,19 @@ export const billsPage = {
     const ok    = bills.filter(b => b.status === 'normal');
     const total = ok.reduce((a, b) => a + b.total, 0);
     const disc  = ok.reduce((a, b) => a + b.item_discount + b.bill_discount, 0);
-    const label = { today: 'วันนี้', '7d': '7 วันล่าสุด', all: 'ทั้งหมด' }[range];
+    const label = customBounds() ? `ช่วง ${customFrom || 'เริ่มต้น'} ถึง ${customTo || 'ปัจจุบัน'}` : { today: 'วันนี้', '7d': '7 วันล่าสุด', all: 'ทั้งหมด' }[range];
 
     return `
     <div class="page-head">
       <div><h1>บิลขาย / ยกเลิกบิล</h1><p>${label} · ${bills.length} รายการ</p></div>
       <div class="spacer"></div>
+      <div class="flex wrap" style="gap:6px;margin-right:10px">
+        <input class="inp" type="date" id="billFrom" value="${customFrom}">
+        <span class="mini" style="align-self:center">ถึง</span>
+        <input class="inp" type="date" id="billTo" value="${customTo}">
+        <button class="btn" data-custom="1">ดูช่วงวันที่</button>
+        ${customBounds() ? '<button class="btn ghost" data-clear-date="1">ล้าง</button>' : ''}
+      </div>
       <div class="seg">
         ${[['today', 'วันนี้'], ['7d', '7 วัน'], ['all', 'ทั้งหมด']].map(([k, n]) =>
           `<button class="${range === k ? 'on' : ''}" data-range="${k}">${n}</button>`).join('')}
@@ -166,7 +182,13 @@ export const billsPage = {
     root = el;
     el.addEventListener('click', async e => {
       const r = e.target.closest('[data-range]');
-      if (r) { range = r.dataset.range; await redrawPage(el, billsPage); return; }
+      if (r) { range = r.dataset.range; customFrom = customTo = ''; await redrawPage(el, billsPage); return; }
+      if (e.target.closest('[data-custom]')) {
+        customFrom = el.querySelector('#billFrom').value; customTo = el.querySelector('#billTo').value;
+        if (customFrom && customTo && customFrom > customTo) { toast('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด', 'err'); return; }
+        range = 'custom'; await redrawPage(el, billsPage); return;
+      }
+      if (e.target.closest('[data-clear-date]')) { customFrom = customTo = ''; range = 'today'; await redrawPage(el, billsPage); return; }
       const o = e.target.closest('[data-open]');
       if (o) { e.preventDefault(); showItems(o.dataset.open); return; }
       const v = e.target.closest('[data-void]');
