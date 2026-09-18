@@ -53,7 +53,8 @@ export async function deviceId() {
 }
 export async function currentLocation() {
   const id = await metaGet('location_id', 'loc-shop');
-  return (await db.locations.get(id)) || (await db.locations.toCollection().first());
+  return (await db.locations.get(id)) || (await db.locations.toCollection().first()) ||
+    { id: 'loc-shop', code: 'SHOP', name: 'หน้าร้าน', kind: 'shop', is_active: true };
 }
 export async function setLocation(id) { await metaSet('location_id', id); }
 
