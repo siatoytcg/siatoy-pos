@@ -252,12 +252,26 @@ async function pushEntry(e) {
     if (r.error) return r.error;
     r = await sb.from('product_barcodes').upsert([barcode], { onConflict: 'barcode', ignoreDuplicates: true });
     if (r.error) return r.error;
-    r = await ins('stock_moves', [{ ...pick(move, MOVE_COLS), created_by: by }]);
-    if (r.error) return r.error;
+    if (move) {
+      r = await ins('stock_moves', [{ ...pick(move, MOVE_COLS), created_by: by }]);
+      if (r.error) return r.error;
+    }
     if (cost != null) {
       r = await sb.from('product_costs').upsert([{ product_id: product.id, cost }],
         { onConflict: 'product_id', ignoreDuplicates: true });
       if (r.error) return r.error;
+    }
+    return null;
+  }
+
+  if (e.kind === 'product_update') {
+    const { id, changes, cost } = e.payload;
+    const r = await sb.from('products').update(pick(changes, PRODUCT_COLS)).eq('id', id);
+    if (r.error) return r.error;
+    if (cost != null) {
+      const c = await sb.from('product_costs').upsert([{ product_id: id, cost }],
+        { onConflict: 'product_id', ignoreDuplicates: false });
+      if (c.error) return c.error;
     }
     return null;
   }

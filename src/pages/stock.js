@@ -5,6 +5,8 @@
 import { money, esc, toast, openModal, closeModal, uuid } from '../lib/util.js';
 import { db, stockMap, currentLocation } from '../lib/store.js';
 import { S } from '../lib/state.js';
+import { hasBackend } from '../config.js';
+import { currentUser } from '../lib/sync.js';
 
 let products = [], vendors = [], sets = [], stock = new Map(), all = new Map();
 let q = '', cat = 'ทั้งหมด', root = null, loc = null;
@@ -74,22 +76,34 @@ function editProduct(id) {
     const now = new Date().toISOString();
 
     if (p) {
+      const updated = { name, category: v('pCat'), set_id: v('pSet') || null,
+        vendor_id: v('pVen') || null, price, cost, is_single: box.querySelector('#pSingle').checked };
       if (p.price !== price || (p.cost || 0) !== cost) {
         await db.meta.put({ key: 'ph:' + uuid(), value: { product_id: p.id, price, cost, at: now, by: S.role } });
       }
-      await db.products.update(p.id, { name, category: v('pCat'), set_id: v('pSet') || null,
-        vendor_id: v('pVen') || null, price, cost, is_single: box.querySelector('#pSingle').checked });
+      await db.products.update(p.id, updated);
+      if (hasBackend() && currentUser()) {
+        await db.outbox.add({ kind: 'product_update', at: now,
+          payload: { id: p.id, changes: updated, cost } });
+      }
       toast('บันทึกการแก้ไขแล้ว', 'ok');
     } else {
       if (await db.products.where('sku').equals(sku).first()) { toast('มีรหัสนี้อยู่แล้ว', 'err'); return; }
       const id = 'prd-' + sku;
-      await db.products.put({ id, sku, name, category: v('pCat'), set_id: v('pSet') || null,
+      const product = { id, sku, name, category: v('pCat'), set_id: v('pSet') || null,
         vendor_id: v('pVen') || null, price, cost, vat_rate: 0,
-        is_single: box.querySelector('#pSingle').checked, is_active: true, icon: '🃏' });
-      await db.barcodes.put({ barcode: sku, product_id: id, kind: 'shop' });
+        is_single: box.querySelector('#pSingle').checked, is_active: true, icon: '🃏' };
+      const barcode = { barcode: sku, product_id: id, kind: 'shop' };
       const st = Number(v('pStock')) || 0;
-      if (st) await db.stock_moves.put({ id: uuid(), product_id: id, location_id: loc.id, qty: st,
-        move_type: 'opening', ref_no: 'สต๊อกตั้งต้นตอนเพิ่มสินค้า', created_at: now });
+      const move = st ? { id: uuid(), product_id: id, location_id: loc.id, qty: st,
+        move_type: 'opening', ref_no: 'สต๊อกตั้งต้นตอนเพิ่มสินค้า', created_at: now } : null;
+      await db.transaction('rw', db.products, db.barcodes, db.stock_moves, db.outbox, async () => {
+        await db.products.put(product);
+        await db.barcodes.put(barcode);
+        if (move) await db.stock_moves.put(move);
+        if (hasBackend() && currentUser()) await db.outbox.add({ kind: 'product', at: now,
+          payload: { product, barcode, move, cost } });
+      });
       toast('เพิ่มสินค้าแล้ว', 'ok');
     }
     closeModal();
