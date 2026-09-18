@@ -6,10 +6,11 @@
  * ตามค่าความละเอียดที่ตั้งไว้ แล้ววางบาร์โค้ดกึ่งกลางดวงแทน
  */
 import { buildPrintJob, openNativePrinter } from '../lib/native-printer.js';
-import { CONFIG } from '../config.js';
+import { CONFIG, hasBackend } from '../config.js';
 import { money, esc, uuid, toast, openModal, closeModal } from '../lib/util.js';
 import { db, currentLocation } from '../lib/store.js';
 import { encode128, padEven, svg128 } from '../lib/code128.js';
+import { currentUser } from '../lib/sync.js';
 
 const SIZES = {
   '30x20': { w: 30, h: 20, n: '30 × 20 มม. (ของร้าน)' },
@@ -124,13 +125,22 @@ async function addToQueue() {
     else {
       const id = 'prd-' + code;
       const loc = await currentLocation();
-      await db.products.put({ id, sku: code, name, category: val('lblCat') || 'อื่น ๆ',
+      const product = { id, sku: code, name, category: val('lblCat') || 'อื่น ๆ',
         set_id: null, vendor_id: val('lblVendor') || null, price, vat_rate: 0,
-        is_single: false, is_active: true, icon: '🏷️' });
-      await db.barcodes.put({ barcode: code, product_id: id, kind: 'shop' });
-      await db.stock_moves.put({ id: uuid(), product_id: id, location_id: loc.id, qty,
+        is_single: false, is_active: true, icon: '🏷️' };
+      const barcode = { barcode: code, product_id: id, kind: 'shop' };
+      const move = { id: uuid(), product_id: id, location_id: loc.id, qty,
         move_type: 'purchase', ref_id: null, ref_no: 'รับเข้าพร้อมพิมพ์สติกเกอร์',
-        created_at: new Date().toISOString() });
+        created_at: new Date().toISOString() };
+      await db.transaction('rw', db.products, db.barcodes, db.stock_moves, db.outbox, async () => {
+        await db.products.put(product);
+        await db.barcodes.put(barcode);
+        await db.stock_moves.put(move);
+        if (hasBackend() && currentUser()) {
+          await db.outbox.add({ kind: 'product', at: move.created_at,
+            payload: { product, barcode, move, cost: cost || null } });
+        }
+      });
       if (cost) await db.products.update(id, { cost });
       products = await db.products.toArray();
       toast('เพิ่ม <b>' + esc(name.slice(0, 24)) + '</b> เข้าคลังแล้ว (สต๊อก ' + qty + ')', 'ok');

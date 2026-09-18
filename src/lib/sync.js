@@ -239,10 +239,28 @@ const ITEM_COLS = ['id','sale_id','product_id','sku','product_name','vendor_id',
   'unit_price','discount','discount_reason','vat_rate','line_total'];
 const MOVE_COLS = ['id','product_id','location_id','qty','move_type','ref_id','ref_no',
   'reason','note','device_id','created_at'];
+const PRODUCT_COLS = ['id','sku','name','category','set_id','vendor_id','price','vat_rate',
+  'is_single','is_active','icon'];
 
 async function pushEntry(e) {
   const by = user ? user.id : null;
   const ins = (table, rows) => sb.from(table).upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+
+  if (e.kind === 'product') {
+    const { product, barcode, move, cost } = e.payload;
+    let r = await ins('products', [pick(product, PRODUCT_COLS)]);
+    if (r.error) return r.error;
+    r = await sb.from('product_barcodes').upsert([barcode], { onConflict: 'barcode', ignoreDuplicates: true });
+    if (r.error) return r.error;
+    r = await ins('stock_moves', [{ ...pick(move, MOVE_COLS), created_by: by }]);
+    if (r.error) return r.error;
+    if (cost != null) {
+      r = await sb.from('product_costs').upsert([{ product_id: product.id, cost }],
+        { onConflict: 'product_id', ignoreDuplicates: true });
+      if (r.error) return r.error;
+    }
+    return null;
+  }
 
   if (e.kind === 'sale') {
     const { sale, items, moves } = e.payload;
