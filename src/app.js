@@ -9,7 +9,6 @@ import { labelsPage } from './pages/labels.js';
 import { settingsPage } from './pages/settings.js';
 import { scanPage } from './pages/scan.js';
 import { stockPage } from './pages/stock.js';
-import { setsPage } from './pages/sets.js';
 import { vendorsPage } from './pages/vendors.js';
 import { eventPage } from './pages/event.js';
 import { membersPage } from './pages/members.js';
@@ -26,7 +25,7 @@ import { initClient, currentProfile, currentUser, signOut, pull, push,
 
 const ROUTES = {
   pos: posPage, bills: billsPage, labels: labelsPage, settings: settingsPage,
-  scan: scanPage, stock: stockPage, sets: setsPage, vendors: vendorsPage, import: importPage,
+  scan: scanPage, stock: stockPage, vendors: vendorsPage, import: importPage,
   event: eventPage, recon: reconPage, members: membersPage,
   report: reportPage, notify: notifyPage, users: usersPage,
 };
