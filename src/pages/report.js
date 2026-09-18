@@ -6,7 +6,7 @@ import { money, esc, redrawPage } from '../lib/util.js';
 import { db } from '../lib/store.js';
 import { S } from '../lib/state.js';
 
-let range = 'today', data = null, customFrom = '', customTo = '';
+let range = 'today', data = null, customFrom = '', customTo = '', seller = 'all', sellers = [];
 
 const customBounds = () => {
   if (!customFrom && !customTo) return null;
@@ -27,7 +27,9 @@ async function load() {
   const custom = customBounds();
   const from = custom ? custom.from : startOf(range);
   const to = custom ? custom.to : new Date(8640000000000000);
-  const sales = (await db.sales.toArray()).filter(s => { const at = new Date(s.client_created_at); return at >= from && at <= to; });
+  const allSales = (await db.sales.toArray()).filter(s => { const at = new Date(s.client_created_at); return at >= from && at <= to; });
+  sellers = [...new Set(allSales.map(s => s.created_by_name).filter(Boolean))].sort();
+  const sales = seller === 'all' ? allSales : allSales.filter(s => (s.created_by_name || '') === seller);
   const ok = sales.filter(s => s.status === 'normal');
   const okIds = new Set(ok.map(s => s.id));
   const products = await db.products.toArray();
@@ -70,6 +72,10 @@ export const reportPage = {
     <div class="page-head">
       <div><h1>รายงานสรุป</h1><p>${label} · ${d.sales.length} บิล</p></div>
       <div class="spacer"></div>
+      <select class="inp" id="reportSeller" style="width:150px;padding:8px 9px;font-size:12px">
+        <option value="all" ${seller === 'all' ? 'selected' : ''}>คนขายทั้งหมด</option>
+        ${sellers.map(n => `<option value="${esc(n)}" ${seller === n ? 'selected' : ''}>${esc(n)}</option>`).join('')}
+      </select>
       <div class="date-filter">
         <input class="inp date-filter-input" type="date" id="reportFrom" value="${customFrom}">
         <span class="mini" style="align-self:center">ถึง</span>
@@ -136,6 +142,7 @@ export const reportPage = {
       การปรับราคาหรือรับของล็อตใหม่ที่ต้นทุนต่างไป จึงไม่ทำให้ตัวเลขย้อนหลังเปลี่ยน</div>`;
   },
   mount(el) {
+    el.querySelector('#reportSeller').onchange = async e => { seller = e.target.value; await redrawPage(el, reportPage); };
     el.addEventListener('click', async e => {
       const r = e.target.closest('[data-r]');
       if (r) { range = r.dataset.r; customFrom = customTo = ''; await redrawPage(el, reportPage); return; }
