@@ -211,8 +211,10 @@ export async function voidSale(saleId, reason, userName = '') {
 export const pendingCount = () => db.outbox.count();
 export const blockedItems = () => db.outbox.filter(e => !!e.blocked).toArray();
 export async function clearPendingQueue() {
+  if (await metaGet('legacyQueueClearedV1', false)) return 0;
   const n = await db.outbox.count();
   await db.outbox.clear();
+  await metaSet('legacyQueueClearedV1', true);
   return n;
 }
 
