@@ -103,9 +103,26 @@ function tick() {
   $('#clock').innerHTML = '🕐 <b>' + new Date().toTimeString().slice(0, 5) + '</b>';
 }
 
+// สร้างปุ่มให้เองเมื่อเครื่องยังมี index.html รุ่นเก่าค้างใน Service Worker
+function ensureLogoutButton() {
+  let btn = $('#logoutBtn');
+  if (btn) return btn;
+  const roleSwitch = $('#roleSwitch');
+  if (!roleSwitch) return null;
+  btn = document.createElement('button');
+  btn.id = 'logoutBtn';
+  btn.className = 'btn sm danger';
+  btn.title = 'ออกจากระบบ';
+  btn.textContent = 'ออกจากระบบ';
+  btn.style.display = 'none';
+  roleSwitch.after(btn);
+  return btn;
+}
+
 /* --------------------------------------------------------------- เริ่ม ---- */
 async function boot() {
   initTheme();
+  const logoutBtn = ensureLogoutButton();
   try { setRole(localStorage.getItem('siatoy-role') || 'owner', false); } catch (e) { setRole('owner', false); }
 
   $('#themeBtn').onclick = () => {
