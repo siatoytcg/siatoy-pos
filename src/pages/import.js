@@ -139,7 +139,7 @@ async function doImport(res) {
     const sId = raw => (sets.find(s => s.code === raw || s.name === raw) || {}).id || null;
 
     for (const r of ok) {
-      const id = 'prd-' + r.sku;
+      const id = uuid();
       const prod = { id, sku: r.sku, name: r.name, category: r.category,
         set_id: sId(r.setRaw), vendor_id: vId(r.vendorRaw), price: r.price, cost: r.cost,
         vat_rate: 0, is_single: false, is_active: true, icon: '🃏' };

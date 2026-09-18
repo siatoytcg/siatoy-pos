@@ -123,7 +123,8 @@ async function addToQueue() {
     const exists = await db.products.where('sku').equals(code).first();
     if (exists) toast('มีสินค้ารหัสนี้อยู่แล้ว ไม่ได้เพิ่มซ้ำ', 'err');
     else {
-      const id = 'prd-' + code;
+      // Supabase ใช้ UUID เป็นรหัสสินค้า ใช้ UUID จริงตั้งแต่ต้นเพื่อให้ส่งขึ้นฐานข้อมูลได้
+      const id = uuid();
       const loc = await currentLocation();
       const product = { id, sku: code, name, category: val('lblCat') || 'อื่น ๆ',
         set_id: null, vendor_id: val('lblVendor') || null, price, vat_rate: 0,

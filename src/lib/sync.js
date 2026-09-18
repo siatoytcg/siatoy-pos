@@ -241,6 +241,7 @@ const MOVE_COLS = ['id','product_id','location_id','qty','move_type','ref_id','r
   'reason','note','device_id','created_at'];
 const PRODUCT_COLS = ['id','sku','name','category','set_id','vendor_id','price','vat_rate',
   'is_single','is_active','icon'];
+const isUuid = v => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || ''));
 
 async function pushEntry(e) {
   const by = user ? user.id : null;
@@ -248,6 +249,22 @@ async function pushEntry(e) {
 
   if (e.kind === 'product') {
     const { product, barcode, move, cost } = e.payload;
+    // รุ่นเก่าเคยสร้าง id เป็น prd-8859001 ซึ่ง Supabase รับไม่ได้เพราะคอลัมน์เป็น UUID
+    // แปลงรายการค้างครั้งเดียวก่อนส่ง เพื่อไม่ให้คิวเดิมค้างตลอด
+    if (!isUuid(product.id)) {
+      const oldId = product.id, newId = crypto.randomUUID();
+      product.id = newId; barcode.product_id = newId;
+      if (move) move.product_id = newId;
+      const old = await db.products.get(oldId);
+      if (old) { await db.products.put({ ...old, id: newId }); await db.products.delete(oldId); }
+      await db.barcodes.where('product_id').equals(oldId).modify({ product_id: newId });
+      await db.stock_moves.where('product_id').equals(oldId).modify({ product_id: newId });
+      const pending = await db.outbox.toArray();
+      for (const item of pending) {
+        const raw = JSON.stringify(item.payload || {}).replaceAll(oldId, newId);
+        await db.outbox.update(item.seq, { payload: JSON.parse(raw) });
+      }
+    }
     let r = await ins('products', [pick(product, PRODUCT_COLS)]);
     if (r.error) return r.error;
     r = await sb.from('product_barcodes').upsert([barcode], { onConflict: 'barcode', ignoreDuplicates: true });

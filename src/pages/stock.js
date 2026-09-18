@@ -89,7 +89,7 @@ function editProduct(id) {
       toast('บันทึกการแก้ไขแล้ว', 'ok');
     } else {
       if (await db.products.where('sku').equals(sku).first()) { toast('มีรหัสนี้อยู่แล้ว', 'err'); return; }
-      const id = 'prd-' + sku;
+      const id = uuid();
       const product = { id, sku, name, category: v('pCat'), set_id: v('pSet') || null,
         vendor_id: v('pVen') || null, price, cost, vat_rate: 0,
         is_single: box.querySelector('#pSingle').checked, is_active: true, icon: '🃏' };
