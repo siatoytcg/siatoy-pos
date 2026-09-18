@@ -203,6 +203,26 @@ export async function pull() {
   if (moves.length) await db.stock_moves.bulkPut(moves);
   counts.stock_moves = moves.length;
 
+  // บิลและรายการสินค้าในบิลต้องดึงมาด้วย ไม่เช่นนั้นเครื่องใหม่จะเห็นสต๊อก
+  // แต่หน้าบิลขายและรายงานว่างเปล่า แม้ข้อมูลจะอยู่บนเซิร์ฟเวอร์แล้ว
+  const { data: sales, error: sErr } = await sb.from('sales').select('*')
+    .order('client_created_at', { ascending: true });
+  if (sErr) return { ok: false, reason: sErr.message };
+  const { data: saleItems, error: iErr } = await sb.from('sale_items').select('*');
+  if (iErr) return { ok: false, reason: iErr.message };
+  const { data: itemCosts } = await sb.from('sale_item_costs').select('sale_item_id,unit_cost');
+  const costsByItem = new Map((itemCosts || []).map(c => [c.sale_item_id, Number(c.unit_cost)]));
+  const localItems = (saleItems || []).map(it => ({
+    ...it,
+    ...(costsByItem.has(it.id) ? { unit_cost: costsByItem.get(it.id) } : {}),
+  }));
+  await db.sales.clear();
+  await db.sale_items.clear();
+  if (sales && sales.length) await db.sales.bulkPut(sales);
+  if (localItems.length) await db.sale_items.bulkPut(localItems);
+  counts.sales = (sales || []).length;
+  counts.sale_items = localItems.length;
+
   await metaSet('lastPull', new Date().toISOString());
   return { ok: true, counts };
 }
