@@ -139,7 +139,6 @@ async function boot() {
   $('#roleSwitch').onclick = e => {
     const b = e.target.closest('[data-role]'); if (b) setRole(b.dataset.role);
   };
-  const logoutBtn = $('#logoutBtn');
   if (logoutBtn) logoutBtn.onclick = async () => {
     const btn = logoutBtn;
     btn.disabled = true;
