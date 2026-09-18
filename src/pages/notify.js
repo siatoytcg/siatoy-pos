@@ -92,6 +92,22 @@ async function sendNow(el) {
   const btn = el.querySelector('#nfSend');
   btn.disabled = true; btn.textContent = 'กำลังส่ง…';
   try {
+    // อ่านค่าจากช่องกรอกอีกครั้งก่อนบันทึกเสมอ ไม่พึ่ง event change
+    // เพราะผู้ใช้อาจกดส่งทันทีขณะเคอร์เซอร์ยังอยู่ในช่องโทเค็น
+    const fields = {
+      lineToken: el.querySelector('#nfLineToken'), lineTo: el.querySelector('#nfLineTo'),
+      tgToken: el.querySelector('#nfTgToken'), tgChat: el.querySelector('#nfTgChat'),
+      time: el.querySelector('#nfTime'),
+    };
+    if (fields.lineToken) secrets.line_token = fields.lineToken.value.trim();
+    if (fields.lineTo) cfg.line_to = fields.lineTo.value.trim();
+    if (fields.tgToken) secrets.tg_token = fields.tgToken.value.trim();
+    if (fields.tgChat) cfg.tg_chat = fields.tgChat.value.trim();
+    if (fields.time) cfg.time = fields.time.value;
+    if ((cfg.channel === 'line' || cfg.channel === 'both') && (!secrets.line_token || !cfg.line_to))
+      throw new Error('กรุณาใส่ LINE Channel access token และปลายทาง (User ID หรือ Group ID) ให้ครบ');
+    if ((cfg.channel === 'telegram' || cfg.channel === 'both') && (!secrets.tg_token || !cfg.tg_chat))
+      throw new Error('กรุณาใส่ Telegram Bot token และ Chat ID ให้ครบ');
     await save();
     if (hasBackend() && currentUser()) {
       const r = await invoke('notify', { channel: cfg.channel });

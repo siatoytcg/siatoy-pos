@@ -55,7 +55,8 @@ export async function invoke(name, body) {
 export async function serverSetting(key, value) {
   if (!sb || !user) return null;
   if (value === undefined) {
-    const { data } = await sb.from('settings').select('value').eq('key', key).maybeSingle();
+    const { data, error } = await sb.from('settings').select('value').eq('key', key).maybeSingle();
+    if (error) throw new Error('อ่านค่าตั้งค่าไม่ได้: ' + error.message);
     return data ? data.value : null;
   }
   const { error } = await sb.from('settings').upsert({ key, value, updated_by: user.id }, { onConflict: 'key' });
