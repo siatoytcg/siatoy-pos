@@ -8,6 +8,29 @@ import { S } from '../lib/state.js';
 
 let range = 'today', data = null, customFrom = '', customTo = '', seller = 'all', sellers = [];
 
+async function exportAll() {
+  const ids = new Set(data.all.map(s => s.id));
+  const items = (await db.sale_items.toArray()).filter(i => ids.has(i.sale_id));
+  const moves = (await db.stock_moves.toArray()).filter(m => {
+    const at = new Date(m.created_at);
+    const b = customBounds();
+    return b ? at >= b.from && at <= b.to : at >= startOf(range) && at <= new Date(8640000000000000);
+  });
+  const vendors = await db.vendors.toArray();
+  const vendorName = id => (vendors.find(v => v.id === id) || {}).name || '-';
+  downloadExcel('siatoy-report-full.xls', [
+    { name: 'สรุปยอดขาย', headers: ['วันที่','ผู้ขาย','เลขบิล','ยอดขาย','ช่องทาง','สถานะ'],
+      rows: data.all.map(s => [new Date(s.client_created_at).toLocaleString('th-TH'), s.created_by_name || '-', s.bill_no, s.total, s.payment, s.status]) },
+    { name: 'รายการขายและต้นทุน', headers: ['เลขบิล','SKU','สินค้า','จำนวน','ราคาขาย','ต้นทุน ณ วันขาย','รวม'],
+      rows: items.map(i => [(data.all.find(s => s.id === i.sale_id) || {}).bill_no || i.sale_id, i.sku, i.product_name, i.qty, i.unit_price, i.unit_cost || 0, i.line_total]) },
+    { name: 'สต๊อกเคลื่อนไหว', headers: ['วันที่','สินค้า','จำนวน','ประเภท','เหตุผล','ผู้ทำรายการ','ผู้ฝากขาย','ยอดจ่ายผู้ฝาก'],
+      rows: moves.map(m => [new Date(m.created_at).toLocaleString('th-TH'), m.product_id, m.qty, m.move_type, m.reason || '-', m.created_by_name || '-', vendorName(m.vendor_id), m.vendor_payout || 0]) },
+    { name: 'ยอดจ่ายผู้ฝาก', headers: ['วันที่','ผู้ฝากขาย','สินค้า','จำนวน','ยอดจ่าย'],
+      rows: moves.filter(m => m.move_type === 'purchase' && Number(m.vendor_payout) > 0)
+        .map(m => [new Date(m.created_at).toLocaleString('th-TH'), vendorName(m.vendor_id), m.product_id, m.qty, m.vendor_payout]) },
+  ]);
+}
+
 const customBounds = () => {
   if (!customFrom && !customTo) return null;
   return {
@@ -77,6 +100,7 @@ export const reportPage = {
         ${sellers.map(n => `<option value="${esc(n)}" ${seller === n ? 'selected' : ''}>${esc(n)}</option>`).join('')}
       </select>
       <button class="btn" id="reportExport">📊 Export Excel</button>
+      <button class="btn gold" id="reportExportAll">📥 Export รวมทั้งหมด</button>
       <div class="date-filter">
         <input class="inp date-filter-input" type="date" id="reportFrom" value="${customFrom}">
         <span class="mini" style="align-self:center">ถึง</span>
@@ -145,6 +169,7 @@ export const reportPage = {
   mount(el) {
     el.querySelector('#reportSeller').onchange = async e => { seller = e.target.value; await redrawPage(el, reportPage); };
     el.querySelector('#reportExport').onclick = () => downloadExcel('siatoy-report.xls', [{ name: 'สรุปยอดขาย', headers: ['วันที่','ผู้ขาย','ยอดรวม','ช่องทาง','สถานะ'], rows: data.all.map(s => [new Date(s.client_created_at).toLocaleString('th-TH'), s.created_by_name || '-', s.total, s.payment, s.status]) }]);
+    el.querySelector('#reportExportAll').onclick = exportAll;
     el.addEventListener('click', async e => {
       const r = e.target.closest('[data-r]');
       if (r) { range = r.dataset.r; customFrom = customTo = ''; await redrawPage(el, reportPage); return; }
