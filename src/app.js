@@ -168,6 +168,10 @@ async function boot() {
     }
     await logEvent('login');
     if (await switchToLiveData()) toast('เปลี่ยนมาใช้ข้อมูลจริงจากเซิร์ฟเวอร์แล้ว');
+    // ส่งรายการที่ค้างจากเครื่องนี้ก่อน pull เสมอ ไม่เช่นนั้น pull จะล้าง
+    // สินค้า/สต๊อกที่เพิ่งเพิ่มแต่ยังไม่ทันส่งออกจาก IndexedDB
+    const beforePull = await push();
+    if (beforePull.failed) toast('ส่งข้อมูลที่ค้างไม่สำเร็จ · ' + beforePull.failed, 'err');
     const r = await pull();
     if (!r.ok) toast('ดึงข้อมูลจากเซิร์ฟเวอร์ไม่สำเร็จ · ' + r.reason, 'err');
     startAutoSync(res => { toast('ส่งขึ้นเซิร์ฟเวอร์แล้ว ' + res.sent + ' รายการ', 'ok'); drawSync(); });
