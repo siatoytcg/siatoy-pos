@@ -22,6 +22,14 @@ const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 
+// ฟังก์ชันสรุปอาจคืนค่า null เมื่อยังไม่มีบิลในวันนั้น
+// ทำให้ตัวสร้างการ์ดอ่าน .top ไม่ได้และหน้าเว็บเห็นข้อความ Cannot read null
+const emptySummary = () => ({
+  date: new Date().toISOString().slice(0, 10), sales_total: 0, bill_count: 0,
+  discount_total: 0, card_fee: 0, cash: 0, transfer: 0, credit: 0,
+  void_count: 0, open_card_count: 0, stock_qty: 0, low_count: 0, top: [],
+});
+
 /* โทเคนอ่านจาก secret ของฟังก์ชันก่อน ถ้าไม่มีค่อยอ่านจากตาราง settings
    ที่เจ้าของร้านกรอกไว้ในหน้าแจ้งเตือน จะได้ตั้งค่าเองได้โดยไม่ต้องใช้ CLI */
 async function secret(admin: any, key: string, env: string) {
@@ -74,10 +82,12 @@ Deno.serve(async (req) => {
         return json({ error: 'ส่งแจ้งเตือนได้เฉพาะสิทธิ์หัวหน้างานขึ้นไป' }, 403);
     }
 
-    const { data: sum, error } = await admin.rpc('daily_summary', {
+    const { data: rawSummary, error } = await admin.rpc('daily_summary', {
       p_date: body.date ?? null, p_location: body.location_id ?? null,
     });
     if (error) return json({ error: error.message }, 500);
+    const sum = { ...emptySummary(), ...(rawSummary || {}) };
+    if (!Array.isArray(sum.top)) sum.top = [];
 
     const { data: shopRow } = await admin.from('settings').select('value').eq('key', 'shopName').maybeSingle();
     const opts = { shopName: shopRow?.value ?? 'Siatoy TCG', locationName: body.location_name || '' };
