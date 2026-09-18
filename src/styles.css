@@ -223,6 +223,9 @@ html[data-theme="dark"] .gold-text{
 .page-head h1{margin:0;font-size:22px;font-weight:500}
 .page-head p{margin:3px 0 0;color:var(--muted);font-size:13px}
 .page-head .spacer{flex:1}
+.date-filter{display:flex;align-items:center;gap:6px;margin-right:10px;white-space:nowrap;flex-wrap:nowrap}
+.date-filter-input{width:128px;padding:8px 9px;font-size:12px}
+.date-filter-button{padding:8px 10px;font-size:12px;white-space:nowrap}
 
 /* ---------- COMPONENTS ---------- */
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--card-shadow)}
