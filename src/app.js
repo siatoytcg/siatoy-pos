@@ -122,8 +122,9 @@ async function boot() {
   $('#roleSwitch').onclick = e => {
     const b = e.target.closest('[data-role]'); if (b) setRole(b.dataset.role);
   };
-  $('#logoutBtn').onclick = async () => {
-    const btn = $('#logoutBtn');
+  const logoutBtn = $('#logoutBtn');
+  if (logoutBtn) logoutBtn.onclick = async () => {
+    const btn = logoutBtn;
     btn.disabled = true;
     btn.textContent = 'กำลังออก…';
     try { await logEvent('logout', { from: 'header' }); } catch (e) {}
@@ -143,7 +144,7 @@ async function boot() {
   await loadSettings(CONFIG);
 
   if (hasBackend() && currentUser()) {
-    $('#logoutBtn').style.display = '';
+    if (logoutBtn) logoutBtn.style.display = '';
     const p = currentProfile();
     if (p) {
       setRole({ staff: 'admin', supervisor: 'sup', owner: 'owner' }[p.role] || 'admin', false);
@@ -161,7 +162,7 @@ async function boot() {
   if (needLogin) {
     $('#sidebar').style.display = 'none';
     $('#roleSwitch').style.display = 'none';
-    $('#logoutBtn').style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = 'none';
     const el = document.createElement('div');
     el.className = 'page on';
     el.innerHTML = await loginPage.render();
