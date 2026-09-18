@@ -134,8 +134,8 @@ export const scanPage = {
           </div>
           <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
             ${isIn ? `
-            <div class="field" style="margin:0"><label>ผู้ฝากขาย / ผู้จำหน่าย</label>
-              <select class="inp" id="scVendor">${vendors.map(v =>
+            <div class="field" style="margin:0"><label>ผู้ฝากขาย / ผู้จำหน่าย (ถ้ามี)</label>
+              <select class="inp" id="scVendor"><option value="">ของร้านเอง / ไม่ใช่ฝากขาย</option>${vendors.map(v =>
                 `<option value="${v.id}">${esc(v.code)} · ${esc(v.name)}</option>`).join('')}</select></div>
             <div class="field" style="margin:0"><label>เลขที่เอกสารรับเข้า (PO)</label>
               <input class="inp" id="scPO" placeholder="เช่น PO-260901-01"></div>`
