@@ -127,7 +127,8 @@ async function boot() {
     btn.disabled = true;
     btn.textContent = 'กำลังออก…';
     try { await logEvent('logout', { from: 'header' }); } catch (e) {}
-    try { await signOut(); } catch (e) { toast('ออกจากระบบไม่สำเร็จ · ' + e.message, 'err'); btn.disabled = false; btn.textContent = 'ออกจากระบบ'; return; }
+    try { await signOut(); } catch (e) { toast('ออกจากระบบในเครื่องแล้ว · ซิงก์เซิร์ฟเวอร์ไม่สำเร็จ', 'err'); }
+    location.hash = '#/login';
     location.reload();
   };
   $('#modalBg').onclick = e => { if (e.target.id === 'modalBg') $('#modalBg').classList.remove('on'); };
