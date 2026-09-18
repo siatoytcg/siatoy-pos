@@ -211,6 +211,19 @@ export async function voidSale(saleId, reason, userName = '') {
 export const pendingCount = () => db.outbox.count();
 export const blockedItems = () => db.outbox.filter(e => !!e.blocked).toArray();
 
+/* คิวสินค้ารุ่นเก่าที่ใช้ id แบบ prd-... ส่งเข้า Supabase ไม่ได้เพราะคอลัมน์เป็น UUID
+   ล้างเฉพาะคิวรูปแบบเก่านี้ ไม่กระทบคิวบิล/สต๊อกที่สร้างด้วย UUID รุ่นปัจจุบัน */
+export async function clearLegacyProductQueue() {
+  const rows = await db.outbox.toArray();
+  let removed = 0;
+  for (const e of rows) {
+    if (/prd-[a-z0-9_-]+/i.test(JSON.stringify(e.payload || {}))) {
+      await db.outbox.delete(e.seq); removed++;
+    }
+  }
+  return removed;
+}
+
 /* ------------------------------------------------------------ ตั้งค่า ---- */
 /* เก็บใน meta ของเครื่องนี้ไปก่อน เมื่อต่อฐานข้อมูลแล้วย้ายไปตาราง settings */
 const CFG_KEYS = ['creditFee', 'pointRate', 'printerDpi', 'shopName'];
