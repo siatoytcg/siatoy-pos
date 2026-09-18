@@ -49,7 +49,7 @@ export function buildFlexSummary(sum, opts = {}) {
       type: 'box', layout: 'vertical', backgroundColor: B, paddingAll: '18px', spacing: 'xs',
       contents: [
         { type: 'text', text: shop.toUpperCase(), size: 'xs', color: GOLD,
-          weight: 'bold', letterSpacing: '2px' },
+          weight: 'bold' },
         { type: 'text', text: 'สรุปยอดขายประจำวัน', size: 'lg', color: '#FFFFFF', weight: 'bold' },
         { type: 'text', text: thaiDate(sum.date) + (loc ? ' · ' + loc : ''),
           size: 'xs', color: '#AAAAAA' },
