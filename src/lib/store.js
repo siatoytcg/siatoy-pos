@@ -210,6 +210,11 @@ export async function voidSale(saleId, reason, userName = '') {
 
 export const pendingCount = () => db.outbox.count();
 export const blockedItems = () => db.outbox.filter(e => !!e.blocked).toArray();
+export async function clearPendingQueue() {
+  const n = await db.outbox.count();
+  await db.outbox.clear();
+  return n;
+}
 
 /* คิวสินค้ารุ่นเก่าที่ใช้ id แบบ prd-... ส่งเข้า Supabase ไม่ได้เพราะคอลัมน์เป็น UUID
    ล้างเฉพาะคิวรูปแบบเก่านี้ ไม่กระทบคิวบิล/สต๊อกที่สร้างด้วย UUID รุ่นปัจจุบัน */

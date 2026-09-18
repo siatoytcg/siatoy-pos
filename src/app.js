@@ -2,7 +2,7 @@
 import { CONFIG, hasBackend, DEMO } from './config.js';
 import { $, $$, toast } from './lib/util.js';
 import { S } from './lib/state.js';
-import { ensureSeeded, currentLocation, pendingCount, loadSettings, clearLegacyProductQueue } from './lib/store.js';
+import { ensureSeeded, currentLocation, pendingCount, loadSettings, clearPendingQueue } from './lib/store.js';
 import { posPage } from './pages/pos.js';
 import { billsPage } from './pages/bills.js';
 import { labelsPage } from './pages/labels.js';
@@ -168,7 +168,7 @@ async function boot() {
     }
     await logEvent('login');
     if (await switchToLiveData()) toast('เปลี่ยนมาใช้ข้อมูลจริงจากเซิร์ฟเวอร์แล้ว');
-    await clearLegacyProductQueue();
+    await clearPendingQueue();
     // ส่งรายการที่ค้างจากเครื่องนี้ก่อน pull เสมอ ไม่เช่นนั้น pull จะล้าง
     // สินค้า/สต๊อกที่เพิ่งเพิ่มแต่ยังไม่ทันส่งออกจาก IndexedDB
     const beforePull = await push();
