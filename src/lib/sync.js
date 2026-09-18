@@ -233,14 +233,15 @@ export async function normalizeInitialStock(barcode, qty) {
   if (!sb || !user) return false;
   const { data: product } = await sb.from('products').select('id,sku').eq('sku', barcode).maybeSingle();
   if (!product) return false;
-  const { data: moves, error } = await sb.from('stock_moves').select('id,location_id,move_type,qty')
-    .eq('product_id', product.id).eq('move_type', 'opening');
+  const { data: moves, error } = await sb.from('stock_moves').select('id,location_id,move_type,qty,ref_no')
+    .eq('product_id', product.id);
   if (error || !moves || moves.length < 2) return false;
+  if (moves.some(m => m.ref_no === 'ยอดตั้งต้น (แก้รายการซ้ำ)')) return false;
   const target = Number(qty);
   const total = moves.reduce((n, m) => n + Number(m.qty || 0), 0);
   if (total === target) return false;
   const locationId = moves[0].location_id;
-  const del = await sb.from('stock_moves').delete().eq('product_id', product.id).eq('move_type', 'opening');
+  const del = await sb.from('stock_moves').delete().eq('product_id', product.id);
   if (del.error) throw new Error(del.error.message);
   const ins = await sb.from('stock_moves').insert({
     id: crypto.randomUUID(), product_id: product.id, location_id: locationId,
