@@ -13,6 +13,12 @@ export const yymmdd = (d = new Date()) =>
   String(d.getMonth() + 1).padStart(2,'0') +
   String(d.getDate()).padStart(2,'0');
 
+export function downloadExcel(filename, sheets) {
+  const cell = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = sheets.map(s => `<h2>${cell(s.name)}</h2><table border="1"><thead><tr>${s.headers.map(h => `<th>${cell(h)}</th>`).join('')}</tr></thead><tbody>${s.rows.map(r => `<tr>${r.map(v => `<td>${cell(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`).join('<br>');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([`<html><meta charset="utf-8"><body>${html}</body></html>`], { type: 'application/vnd.ms-excel' })); a.download = filename.endsWith('.xls') ? filename : `${filename}.xls`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
 export function toast(msg, kind) {
   const box = $('#toasts'); if (!box) return;
   const d = document.createElement('div');

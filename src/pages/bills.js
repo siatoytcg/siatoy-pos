@@ -2,7 +2,7 @@
  * ยกเลิกแล้วของกลับเข้าคลังจริง เพราะลงเป็นบรรทัดคืนของในสมุดเดินของ
  * ไม่ได้แค่เปลี่ยนสถานะบนหน้าจอเหมือนเดโม
  */
-import { money, esc, toast, openModal, closeModal, redrawPage } from '../lib/util.js';
+import { money, esc, toast, openModal, closeModal, redrawPage, downloadExcel } from '../lib/util.js';
 import { db, voidSale } from '../lib/store.js';
 import { S } from '../lib/state.js';
 
@@ -53,6 +53,7 @@ function askVoid(id) {
         <div class="notice red">พนักงานหน้าร้านมีสิทธิ์ทำบิลและรับเงินเท่านั้น
           การยกเลิกบิลต้องให้หัวหน้างานขึ้นไปเป็นผู้อนุมัติ</div>
       </div>
+      <button class="btn" id="billExport">📊 Export Excel</button>
       <div class="modal-foot"><button class="btn ghost" id="mOk">ปิด</button></div>`);
     const box = document.getElementById('modalBox');
     box.querySelector('#mClose').onclick = box.querySelector('#mOk').onclick = closeModal;
@@ -180,6 +181,7 @@ export const billsPage = {
 
   mount(el) {
     root = el;
+    el.querySelector('#billExport').onclick = async () => { const rows=[]; for (const b of bills) for (const it of await db.sale_items.where('sale_id').equals(b.id).toArray()) rows.push([b.bill_no,b.created_by_name||'-',it.sku,it.product_name,it.qty,it.unit_price,it.unit_cost||0,it.line_total,b.status]); downloadExcel('siatoy-bills.xls',[{name:'รายการขาย',headers:['เลขบิล','ผู้ขาย','SKU','สินค้า','จำนวน','ราคาขาย','ต้นทุน','รวม','สถานะ'],rows}]); };
     el.addEventListener('click', async e => {
       const r = e.target.closest('[data-range]');
       if (r) { range = r.dataset.range; customFrom = customTo = ''; await redrawPage(el, billsPage); return; }
