@@ -241,7 +241,8 @@ export const labelsPage = {
                 ${vendors.map(v => `<option value="${v.id}">${esc(v.code)} · ${esc(v.name)}</option>`).join('')}
               </select></div>
           </div>
-          <label class="chk"><input type="checkbox" id="lblSave"> บันทึกเป็นสินค้าใหม่เข้าคลังด้วย (สต๊อก = จำนวนในล็อต)</label>
+          <label class="chk"><input type="checkbox" id="lblSave" checked>
+            บันทึกสินค้าและสต๊อกเข้าระบบด้วย (เอาเครื่องหมายออกหากพิมพ์อย่างเดียว)</label>
           <button class="btn gold block" style="margin-top:12px;padding:12px" id="lblAdd">+ เพิ่มเข้าคิวพิมพ์</button>
         </div>
 
