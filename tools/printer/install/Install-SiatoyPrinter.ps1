@@ -46,7 +46,7 @@ if ((-not $DriverInf) -and (Test-Path -LiteralPath $bundledDriver)) {
   $driverExe = Get-ChildItem -LiteralPath $driverTemp -Filter '*.exe' -File -Recurse | Select-Object -First 1
   if ($driverExe) {
     Write-Host 'Launching the bundled 4BARCODE driver installer...'
-    Start-Process -FilePath $driverExe.FullName -Wait
+    Start-Process -FilePath $driverExe.FullName -Verb RunAs -Wait
   }
   Remove-Item -LiteralPath $driverTemp -Recurse -Force -ErrorAction SilentlyContinue
 }

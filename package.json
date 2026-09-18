@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/nalatikana/siatoy-pos#readme",
   "dependencies": {
-    "@supabase/server": "^1.6.1"
+    "@supabase/server": "^1.6.1",
+    "pg": "^8.23.0"
   }
 }

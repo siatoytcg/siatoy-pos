@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import pg from 'pg';
+const env = Object.fromEntries(fs.readFileSync('.env', 'utf8').split(/\r?\n/).filter(x => x.includes('=')).map(x => { const i=x.indexOf('='); return [x.slice(0,i), x.slice(i+1).trim()]; }));
+const c = new pg.Client({ connectionString: env.NEW_SUPABASE_DB_URL, ssl: { rejectUnauthorized: false } });
+await c.connect();
+const count = await c.query("select count(*)::int as n from information_schema.tables where table_schema='public' and table_type='BASE TABLE'");
+const rows = await c.query("select table_name from information_schema.tables where table_schema='public' and table_type='BASE TABLE' order by table_name");
+console.log(`public tables=${count.rows[0].n}`);
+console.log(rows.rows.map(x => x.table_name).join(','));
+await c.end();
