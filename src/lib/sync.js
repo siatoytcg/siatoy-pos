@@ -141,7 +141,21 @@ export async function signIn(email, password) {
   await adoptSession(data.session);
   return profile;
 }
-export async function signOut() { if (sb) await sb.auth.signOut(); user = null; profile = null; }
+export async function signOut() {
+  let error = null;
+  if (sb) {
+    try {
+      const result = await sb.auth.signOut({ scope: 'local' });
+      error = result && result.error;
+    } catch (e) { error = e; }
+  }
+  // ล้างสถานะในหน่วยความจำและ storage เองด้วย เพื่อไม่ให้หน้าเดิมกลับเข้า session เก่า
+  user = null;
+  profile = null;
+  try { localStorage.removeItem('siatoy-auth'); } catch (e) {}
+  try { sessionStorage.removeItem('siatoy-auth'); } catch (e) {}
+  if (error) throw new Error(error.message || String(error));
+}
 
 function mapAuthError(m) {
   const s = String(m || '');
