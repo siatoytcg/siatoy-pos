@@ -70,12 +70,12 @@ export const reportPage = {
     <div class="page-head">
       <div><h1>รายงานสรุป</h1><p>${label} · ${d.sales.length} บิล</p></div>
       <div class="spacer"></div>
-      <div class="flex wrap" style="gap:6px;margin-right:10px">
-        <input class="inp" type="date" id="reportFrom" value="${customFrom}">
+      <div class="date-filter">
+        <input class="inp date-filter-input" type="date" id="reportFrom" value="${customFrom}">
         <span class="mini" style="align-self:center">ถึง</span>
-        <input class="inp" type="date" id="reportTo" value="${customTo}">
-        <button class="btn" data-custom="1">ดูช่วงวันที่</button>
-        ${customBounds() ? '<button class="btn ghost" data-clear-date="1">ล้าง</button>' : ''}
+        <input class="inp date-filter-input" type="date" id="reportTo" value="${customTo}">
+        <button class="btn date-filter-button" data-custom="1">ดูช่วงวันที่</button>
+        ${customBounds() ? '<button class="btn ghost date-filter-button" data-clear-date="1">ล้าง</button>' : ''}
       </div>
       <div class="seg">${[['today','วันนี้'],['7d','7 วัน'],['month','เดือนนี้']].map(([k,n]) =>
         `<button class="${range === k ? 'on' : ''}" data-r="${k}">${n}</button>`).join('')}</div>
