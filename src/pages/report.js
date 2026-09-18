@@ -2,7 +2,7 @@
  * กำไรขั้นต้นคำนวณจากต้นทุนที่บันทึกไว้ในบรรทัดบิล ณ วันขาย ไม่ใช่ต้นทุนปัจจุบัน
  * ตัวเลขย้อนหลังจึงไม่เปลี่ยนเวลามีการปรับราคาหรือรับของล็อตใหม่ที่ต้นทุนต่างไป
  */
-import { money, esc, redrawPage } from '../lib/util.js';
+import { money, esc, redrawPage, downloadExcel } from '../lib/util.js';
 import { db } from '../lib/store.js';
 import { S } from '../lib/state.js';
 
@@ -76,6 +76,7 @@ export const reportPage = {
         <option value="all" ${seller === 'all' ? 'selected' : ''}>คนขายทั้งหมด</option>
         ${sellers.map(n => `<option value="${esc(n)}" ${seller === n ? 'selected' : ''}>${esc(n)}</option>`).join('')}
       </select>
+      <button class="btn" id="reportExport">📊 Export Excel</button>
       <div class="date-filter">
         <input class="inp date-filter-input" type="date" id="reportFrom" value="${customFrom}">
         <span class="mini" style="align-self:center">ถึง</span>
@@ -143,6 +144,7 @@ export const reportPage = {
   },
   mount(el) {
     el.querySelector('#reportSeller').onchange = async e => { seller = e.target.value; await redrawPage(el, reportPage); };
+    el.querySelector('#reportExport').onclick = () => downloadExcel('siatoy-report.xls', [{ name: 'สรุปยอดขาย', headers: ['วันที่','ผู้ขาย','ยอดรวม','ช่องทาง','สถานะ'], rows: data.all.map(s => [new Date(s.client_created_at).toLocaleString('th-TH'), s.created_by_name || '-', s.total, s.payment, s.status]) }]);
     el.addEventListener('click', async e => {
       const r = e.target.closest('[data-r]');
       if (r) { range = r.dataset.r; customFrom = customTo = ''; await redrawPage(el, reportPage); return; }
