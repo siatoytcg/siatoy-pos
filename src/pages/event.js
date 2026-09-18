@@ -16,6 +16,10 @@ function addBooth() {
         <input class="inp" id="nlName" placeholder="เช่น บูธ Bangkok TCG Fest"></div>
       <div class="field" style="margin:0"><label>รหัสสั้น (ใช้ในเลขบิล ตัวอักษรอังกฤษ/ตัวเลข)</label>
         <input class="inp" id="nlCode" placeholder="เช่น FEST02"></div>
+      <div class="grid g2" style="gap:9px">
+        <div class="field"><label>วันเริ่มงาน</label><input class="inp" id="nlFrom" type="date"></div>
+        <div class="field"><label>วันจบงาน</label><input class="inp" id="nlTo" type="date"></div>
+      </div>
     </div>
     <div class="modal-foot"><button class="btn ghost" id="mNo">ยกเลิก</button>
       <button class="btn gold" id="mOk">เพิ่มบูธ</button></div>`);
@@ -24,9 +28,12 @@ function addBooth() {
   box.querySelector('#mOk').onclick = async () => {
     const name = box.querySelector('#nlName').value.trim();
     const code = box.querySelector('#nlCode').value.trim().toUpperCase();
+    const opened_at = box.querySelector('#nlFrom').value || null;
+    const closed_at = box.querySelector('#nlTo').value || null;
     if (!name || !code) { toast('กรอกชื่อบูธและรหัสให้ครบ', 'err'); return; }
+    if (opened_at && closed_at && opened_at > closed_at) { toast('วันเริ่มต้องไม่เกินวันจบ', 'err'); return; }
     if (await db.locations.where('code').equals(code).first()) { toast('รหัสจุดขายนี้มีอยู่แล้ว', 'err'); return; }
-    await db.locations.put({ id: 'loc-' + code.toLowerCase(), code, name, kind: 'event', is_active: true });
+    await db.locations.put({ id: 'loc-' + code.toLowerCase(), code, name, kind: 'event', opened_at, closed_at, is_active: true });
     closeModal(); toast('เพิ่มบูธ ' + esc(name) + ' แล้ว', 'ok'); location.reload();
   };
 }
@@ -134,9 +141,13 @@ export const eventPage = {
       ${summaryLocs.filter(Boolean).map(l => {
         const st = locStats(l.id);
         const qty = [...(byLoc[l.id] || new Map()).values()].reduce((a, q) => a + q, 0);
+        const end = l.closed_at ? new Date(`${l.closed_at}T23:59:59`) : null;
+        const overdue = end && new Date() > end;
         return `<div class="card" ${l.kind === 'event' ? 'style="border-color:var(--gold-line)"' : ''}>
           <div class="card-title"><span class="ic">${l.kind === 'event' ? '🎪' : '🏪'}</span> ${esc(l.name)}
             <span class="sub">${l.id === here.id ? 'เครื่องนี้อยู่ที่นี่' : esc(l.code)}</span></div>
+          ${l.kind === 'event' ? `<div class="mini" style="margin-bottom:10px">งาน ${esc(l.opened_at || '-')} ถึง ${esc(l.closed_at || '-')}</div>` : ''}
+          ${overdue && qty > 0 ? `<div class="notice warn" style="margin-bottom:10px">ถึงวันปิดงานแล้ว · เหลือ ${money(qty)} ชิ้น กรุณารับกลับเข้าร้านหรือตัดออก</div>` : ''}
           <div class="grid g3" style="gap:10px">
             <div><div class="mini">ยอดขายสะสม</div>
               <div style="font-size:19px;color:var(--gold2)">฿ ${money(st.amount)}</div></div>
