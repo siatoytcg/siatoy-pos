@@ -129,12 +129,12 @@ export const billsPage = {
     <div class="page-head">
       <div><h1>บิลขาย / ยกเลิกบิล</h1><p>${label} · ${bills.length} รายการ</p></div>
       <div class="spacer"></div>
-      <div class="flex wrap" style="gap:6px;margin-right:10px">
-        <input class="inp" type="date" id="billFrom" value="${customFrom}">
+      <div class="date-filter">
+        <input class="inp date-filter-input" type="date" id="billFrom" value="${customFrom}">
         <span class="mini" style="align-self:center">ถึง</span>
-        <input class="inp" type="date" id="billTo" value="${customTo}">
-        <button class="btn" data-custom="1">ดูช่วงวันที่</button>
-        ${customBounds() ? '<button class="btn ghost" data-clear-date="1">ล้าง</button>' : ''}
+        <input class="inp date-filter-input" type="date" id="billTo" value="${customTo}">
+        <button class="btn date-filter-button" data-custom="1">ดูช่วงวันที่</button>
+        ${customBounds() ? '<button class="btn ghost date-filter-button" data-clear-date="1">ล้าง</button>' : ''}
       </div>
       <div class="seg">
         ${[['today', 'วันนี้'], ['7d', '7 วัน'], ['all', 'ทั้งหมด']].map(([k, n]) =>
