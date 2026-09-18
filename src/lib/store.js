@@ -39,6 +39,11 @@ db.version(3).stores({
   events: '++id, kind, at',
 });
 
+/* เวอร์ชัน 4 : รอบจ่ายผู้ฝากขายที่บันทึกแล้วในเครื่องนี้ */
+db.version(4).stores({
+  vendor_payouts: 'id, vendor_id, paid_at',
+});
+
 /* ---------------------------------------------------------------- meta ---- */
 export async function metaGet(key, dflt = null) {
   const r = await db.meta.get(key);

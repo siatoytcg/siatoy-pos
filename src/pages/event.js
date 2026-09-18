@@ -61,6 +61,45 @@ function locStats(id) {
   return { amount: ok.reduce((a, s) => a + s.total, 0), bills: ok.length };
 }
 
+function addEventStock(locId) {
+  const event = locs.find(l => l.id === locId);
+  openModal(`<div class="modal-head"><h3>เพิ่มสต๊อกเข้า · ${esc(event.name)}</h3><button class="x" id="mClose">✕</button></div>
+    <div class="modal-body"><div class="field"><label>สินค้า</label><select class="inp" id="evProduct">
+      ${products.map(p => `<option value="${p.id}">${esc(p.sku)} · ${esc(p.name)}</option>`).join('')}
+    </select></div><div class="field" style="margin:0"><label>จำนวน</label><input class="inp" id="evQty" type="number" min="1" value="1"></div></div>
+    <div class="modal-foot"><button class="btn ghost" id="mNo">ยกเลิก</button><button class="btn gold" id="mOk">เพิ่มเข้าบูธ</button></div>`);
+  const box = document.getElementById('modalBox');
+  box.querySelector('#mClose').onclick = box.querySelector('#mNo').onclick = closeModal;
+  box.querySelector('#mOk').onclick = async () => {
+    const pid = box.querySelector('#evProduct').value, qty = Math.max(0, Number(box.querySelector('#evQty').value) || 0);
+    const shopStock = (await stockMap(here.id)).get(pid) || 0;
+    if (!qty || qty > shopStock) { toast(`สต๊อกหน้าร้านไม่พอ (เหลือ ${shopStock} ชิ้น)`, 'err'); return; }
+    const now = new Date().toISOString(), docId = uuid(), by = { admin: 'พนักงาน', sup: 'หัวหน้า', owner: 'เจ้าของ' }[S.role], dev = await deviceId();
+    const moves = [
+      { id: uuid(), product_id: pid, location_id: here.id, qty: -qty, move_type: 'transfer_out', ref_id: docId, reason: 'ย้ายเข้า ' + event.name, created_by_name: by, device_id: dev, created_at: now },
+      { id: uuid(), product_id: pid, location_id: event.id, qty, move_type: 'transfer_in', ref_id: docId, reason: 'รับเข้าจาก ' + here.name, created_by_name: by, device_id: dev, created_at: now },
+    ];
+    await db.transaction('rw', db.stock_moves, db.outbox, async () => { await db.stock_moves.bulkPut(moves); await db.outbox.add({ kind: 'stock', at: now, payload: { moves } }); });
+    closeModal(); toast('เพิ่มสต๊อกเข้าบูธแล้ว', 'ok'); location.reload();
+  };
+}
+
+function closeEvent(locId) {
+  const event = locs.find(l => l.id === locId);
+  openModal(`<div class="modal-head"><h3>ปิดงาน · ${esc(event.name)}</h3><button class="x" id="mClose">✕</button></div>
+    <div class="modal-body"><div class="notice warn">เมื่อปิดงานแล้ว ให้เลือกว่าจะรับของที่เหลือกลับเข้าร้าน หรือตัดออกจากระบบ</div></div>
+    <div class="modal-foot"><button class="btn ghost" id="mNo">ยกเลิก</button><button class="btn" id="mDiscard">ตัดของที่เหลือออก</button><button class="btn gold" id="mReturn">รับของกลับเข้าร้าน</button></div>`);
+  const box = document.getElementById('modalBox');
+  box.querySelector('#mClose').onclick = box.querySelector('#mNo').onclick = closeModal;
+  box.querySelector('#mReturn').onclick = () => { closeModal(); bringBack(locId); };
+  box.querySelector('#mDiscard').onclick = async () => {
+    const stock = byLoc[locId], now = new Date().toISOString(), docId = uuid(), by = { admin: 'พนักงาน', sup: 'หัวหน้า', owner: 'เจ้าของ' }[S.role], dev = await deviceId();
+    const moves = [...stock.entries()].filter(([, q]) => q > 0).map(([pid, q]) => ({ id: uuid(), product_id: pid, location_id: locId, qty: -q, move_type: 'event_close', ref_id: docId, reason: 'ปิดงานและตัดของที่เหลือ', created_by_name: by, device_id: dev, created_at: now }));
+    await db.transaction('rw', db.stock_moves, db.outbox, db.locations, async () => { if (moves.length) await db.stock_moves.bulkPut(moves); await db.outbox.add({ kind: 'stock', at: now, payload: { moves } }); await db.locations.update(locId, { is_active: false, finalized_at: now, close_action: 'discard' }); });
+    closeModal(); toast('ปิดงานและตัดของที่เหลือแล้ว', 'ok'); location.reload();
+  };
+}
+
 /* ของที่บูธ : ยกไปเท่าไหร่ ขายไปเท่าไหร่ เหลือเท่าไหร่ */
 async function boothRows(locId) {
   const rows = new Map();
@@ -183,7 +222,9 @@ export const eventPage = {
     </table></div></div>
     <div class="flex wrap" style="margin-top:14px">
       <button class="btn gold" onclick="location.hash='#/scan'">📤 สแกนยกของไปงาน</button>
+      <button class="btn" data-add-event="${sel}">➕ เพิ่มสต๊อกเข้าบูธ</button>
       <button class="btn" data-back-btn="${sel}">📥 รับของกลับเข้าคลัง</button>
+      <button class="btn danger" data-close-event="${sel}">✓ ปิดงาน</button>
     </div>`
     : `<div class="card"><div class="cart-empty"><span class="big">🎪</span>
         ยังไม่มีจุดขายแบบบูธงาน<br>กดปุ่มเพิ่มจุดขายด้านบนเพื่อเริ่มต้น</div></div>`}`;
@@ -195,6 +236,10 @@ export const eventPage = {
       if (l) { sel = l.dataset.loc; await redrawPage(el, eventPage); return; }
       const b = e.target.closest('[data-back-btn]');
       if (b) bringBack(b.dataset.backBtn);
+      const a = e.target.closest('[data-add-event]');
+      if (a) addEventStock(a.dataset.addEvent);
+      const c = e.target.closest('[data-close-event]');
+      if (c) closeEvent(c.dataset.closeEvent);
       if (e.target.closest('#addBooth')) addBooth();
     });
   },

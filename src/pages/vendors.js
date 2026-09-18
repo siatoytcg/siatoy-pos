@@ -32,10 +32,17 @@ function settlement(v) {
   return { ...s, commission: 0, payable: s.amount };
 }
 
-function showSettlement(id) {
+async function markPaid(id) {
+  const v = vendors.find(x => x.id === id), st = settlement(v);
+  await db.vendor_payouts.put({ id: `${id}:${monthLabel}`, vendor_id: id, period: monthLabel, amount: st.payable, paid_at: new Date().toISOString(), paid_by: S.role });
+  closeModal(); toast('บันทึกรอบจ่ายแล้ว', 'ok'); location.reload();
+}
+
+async function showSettlement(id) {
   const v = vendors.find(x => x.id === id);
   const st = settlement(v);
   const items = products.filter(p => p.vendor_id === id);
+  const paid = await db.vendor_payouts.get(`${id}:${monthLabel}`);
   openModal(`
     <div class="modal-head"><h3>สรุปรอบจ่าย · ${esc(v.name)}</h3><button class="x" id="mClose">✕</button></div>
     <div class="modal-body">
@@ -54,12 +61,12 @@ function showSettlement(id) {
           <td class="num">${money(p.price)}</td><td class="num">${all.get(p.id) || 0}</td></tr>`).join('')
           || '<tr><td colspan="3" class="mini">ยังไม่มีสินค้าของเจ้านี้</td></tr>'}</tbody>
       </table></div></div>
-      <div class="notice info" style="margin-top:14px">ตัวเลขคำนวณจากบิลที่ขายจริงในเดือนนี้
-        และไม่รวมบิลที่ถูกยกเลิก · การบันทึกรอบจ่ายและสถานะจ่ายแล้วจะทำตอนต่อฐานข้อมูลกลาง</div>
+      <div class="notice ${paid ? 'info' : 'warn'}" style="margin-top:14px">${paid ? 'จ่ายรอบนี้แล้วเมื่อ ' + new Date(paid.paid_at).toLocaleString('th-TH') : 'ยังไม่ได้บันทึกการจ่ายรอบนี้'}</div>
     </div>
-    <div class="modal-foot"><button class="btn ghost" id="mNo">ปิด</button></div>`, true);
+    <div class="modal-foot"><button class="btn ghost" id="mNo">ปิด</button>${paid ? '' : '<button class="btn gold" id="mPaid">บันทึกว่าจ่ายแล้ว</button>'}</div>`, true);
   const box = document.getElementById('modalBox');
   box.querySelector('#mClose').onclick = box.querySelector('#mNo').onclick = closeModal;
+  if (!paid) box.querySelector('#mPaid').onclick = () => markPaid(id);
 }
 
 function addVendor() {
