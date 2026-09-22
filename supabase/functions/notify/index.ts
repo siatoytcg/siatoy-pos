@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     let channel = body.channel || notifyConfig?.value?.channel || 'line';
     if (scheduled) {
       const now = thaiNow();
-      if (notifyConfig?.value?.enabled === false || (notifyConfig?.value?.time && notifyConfig.value.time !== now.time))
+      if (!notifyConfig?.value?.time || notifyConfig.value.enabled === false || notifyConfig.value.time !== now.time)
         return json({ ok: true, skipped: 'ยังไม่ถึงเวลาที่ตั้งไว้' });
       const { data: lastSent } = await admin.from('settings').select('value').eq('key', 'notify_last_sent').maybeSingle();
       if (lastSent?.value?.date === now.date) return json({ ok: true, skipped: 'ส่งวันนี้แล้ว' });
