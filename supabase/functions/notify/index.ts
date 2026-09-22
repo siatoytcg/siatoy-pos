@@ -64,6 +64,16 @@ async function sendTelegram(admin: any, text: string) {
   return j.ok ? { ok: true } : { ok: false, error: j.description };
 }
 
+function thaiNow() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '';
+  return { time: `${get('hour')}:${get('minute')}`, date: new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date()) };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
@@ -92,13 +102,28 @@ Deno.serve(async (req) => {
     const { data: shopRow } = await admin.from('settings').select('value').eq('key', 'shopName').maybeSingle();
     const opts = { shopName: shopRow?.value ?? 'Siatoy TCG', locationName: body.location_name || '' };
 
+    // งาน cron เรียกโดยไม่มี channel ส่วนการกดส่งทันทีจะส่ง channel มาเสมอ
+    const { data: notifyConfig } = await admin.from('settings').select('value').eq('key', 'notify_config').maybeSingle();
+    const scheduled = isCron && !body.channel;
+    let channel = body.channel || notifyConfig?.value?.channel || 'line';
+    if (scheduled) {
+      const now = thaiNow();
+      if (notifyConfig?.value?.enabled === false || (notifyConfig?.value?.time && notifyConfig.value.time !== now.time))
+        return json({ ok: true, skipped: 'ยังไม่ถึงเวลาที่ตั้งไว้' });
+      const { data: lastSent } = await admin.from('settings').select('value').eq('key', 'notify_last_sent').maybeSingle();
+      if (lastSent?.value?.date === now.date) return json({ ok: true, skipped: 'ส่งวันนี้แล้ว' });
+    }
+
     const flex = buildFlexSummary(sum, opts);
     const text = buildTextSummary(sum, opts);
 
     if (body.dry) return json({ summary: sum, flex, text, altText: altText(sum) });
 
-    const line = body.channel === 'telegram' ? { skipped: 'ข้าม' } : await sendLine(admin, flex, altText(sum));
-    const tg   = body.channel === 'line'     ? { skipped: 'ข้าม' } : await sendTelegram(admin, text);
+    const line = channel === 'telegram' ? { skipped: 'ข้าม' } : await sendLine(admin, flex, altText(sum));
+    const tg   = channel === 'line'     ? { skipped: 'ข้าม' } : await sendTelegram(admin, text);
+    if (scheduled && (line.ok || tg.ok)) {
+      await admin.from('settings').upsert({ key: 'notify_last_sent', value: { date: thaiNow().date } }, { onConflict: 'key' });
+    }
     return json({ ok: true, summary: sum, line, telegram: tg });
   } catch (e) {
     return json({ error: String(e?.message ?? e) }, 500);

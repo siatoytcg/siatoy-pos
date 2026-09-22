@@ -64,6 +64,10 @@ async function localSummary() {
 async function load() {
   cfg = { ...cfg, ...(await metaGet('notify', {})) };
   if (hasBackend() && currentUser()) {
+    try {
+      const remoteCfg = await serverSetting('notify_config');
+      if (remoteCfg && typeof remoteCfg === 'object') cfg = { ...cfg, ...remoteCfg };
+    } catch (e) { /* ใช้ค่าที่เก็บในเครื่องชั่วคราว */ }
     // โทเคนอยู่บนเซิร์ฟเวอร์ อ่านได้เฉพาะเจ้าของร้าน
     try {
       secrets.line_token = (await serverSetting('secret:line_token')) || '';
@@ -79,6 +83,7 @@ async function load() {
 async function save() {
   await metaSet('notify', cfg);
   if (hasBackend() && currentUser()) {
+    await serverSetting('notify_config', cfg);
     await serverSetting('secret:line_token', secrets.line_token);
     await serverSetting('secret:line_to', cfg.line_to);
     await serverSetting('secret:tg_token', secrets.tg_token);
@@ -180,6 +185,7 @@ export const notifyPage = {
 
           <div class="field"><label>เวลาส่งสรุปประจำวัน</label>
             <input class="inp" id="nfTime" type="time" value="${esc(cfg.time)}"></div>
+          <button class="btn block" id="nfSave" style="margin-bottom:8px">💾 บันทึกการตั้งค่า</button>
           <button class="btn gold block" id="nfSend">📤 ส่งสรุปของวันนี้เดี๋ยวนี้</button>
           <div class="mini" style="text-align:center;margin-top:8px">
             ${online ? 'ส่งผ่านเซิร์ฟเวอร์ · โทเคนไม่ออกจากเซิร์ฟเวอร์'
@@ -218,6 +224,15 @@ export const notifyPage = {
   },
 
   mount(el) {
+    const collect = () => {
+      const fields = { lineToken: el.querySelector('#nfLineToken'), lineTo: el.querySelector('#nfLineTo'),
+        tgToken: el.querySelector('#nfTgToken'), tgChat: el.querySelector('#nfTgChat'), time: el.querySelector('#nfTime') };
+      if (fields.lineToken) secrets.line_token = fields.lineToken.value.trim();
+      if (fields.lineTo) cfg.line_to = fields.lineTo.value.trim();
+      if (fields.tgToken) secrets.tg_token = fields.tgToken.value.trim();
+      if (fields.tgChat) cfg.tg_chat = fields.tgChat.value.trim();
+      if (fields.time) cfg.time = fields.time.value;
+    };
     const bind = (id, key, store) => {
       const e = el.querySelector('#' + id);
       if (e) e.onchange = async () => { store[key] = e.value.trim(); await save(); toast('บันทึกแล้ว', 'ok'); };
@@ -230,14 +245,17 @@ export const notifyPage = {
 
     el.querySelector('#nfCh').onclick = async e => {
       const b = e.target.closest('[data-ch]'); if (!b) return;
-      cfg.channel = b.dataset.ch; await metaSet('notify', cfg);
+      cfg.channel = b.dataset.ch; await save();
       await redrawPage(el, notifyPage);
     };
     el.addEventListener('change', async e => {
       const a = e.target.closest('[data-alert]');
-      if (a) { cfg.alerts[a.dataset.alert] = a.checked; await metaSet('notify', cfg); }
+      if (a) { cfg.alerts[a.dataset.alert] = a.checked; await save(); }
     });
     el.querySelector('#nfSend').onclick = () => sendNow(el);
+    el.querySelector('#nfSave').onclick = async () => {
+      collect(); await save(); toast('บันทึกการตั้งค่าแล้ว', 'ok');
+    };
   },
 };
 
