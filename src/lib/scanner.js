@@ -66,7 +66,8 @@ function loadZXing() {
   if (zxingLoaded) return zxingLoaded;
   zxingLoaded = new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = 'public/vendor/zxing.js';
+    // โฟลเดอร์ public ถูกเสิร์ฟจาก root ของเว็บ ไม่ได้มี /public อยู่ใน URL
+    s.src = './vendor/zxing.js';
     s.onload = () => res(window.ZXing);
     s.onerror = () => rej(new Error('โหลดตัวอ่านบาร์โค้ดไม่สำเร็จ'));
     document.head.appendChild(s);
@@ -98,12 +99,16 @@ export async function startCamera(videoEl, onCode) {
   const FORMATS = ['code_128', 'ean_13', 'ean_8', 'code_39', 'upc_a', 'upc_e', 'itf', 'qr_code'];
   let loop;
 
-  if ('BarcodeDetector' in window) {
-    const det = new window.BarcodeDetector({ formats: FORMATS });
+  let detector = null;
+  try {
+    if ('BarcodeDetector' in window) detector = new window.BarcodeDetector({ formats: FORMATS });
+  } catch (e) { detector = null; }
+
+  if (detector) {
     loop = async () => {
       if (stop) return;
       try {
-        const found = await det.detect(videoEl);
+        const found = await detector.detect(videoEl);
         if (found && found.length) hit(found[0].rawValue);
       } catch (e) { /* เฟรมนี้อ่านไม่ได้ ข้ามไป */ }
       requestAnimationFrame(loop);
@@ -120,7 +125,7 @@ export async function startCamera(videoEl, onCode) {
 
   return () => {
     stop = true;
-    if (typeof loop === 'function' && !('BarcodeDetector' in window)) loop();
+    if (typeof loop === 'function' && !detector) loop();
     stream.getTracks().forEach(t => t.stop());
     videoEl.srcObject = null;
   };
