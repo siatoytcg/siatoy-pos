@@ -67,7 +67,7 @@ function loadZXing() {
   zxingLoaded = new Promise((res, rej) => {
     const s = document.createElement('script');
     // โฟลเดอร์ public ถูกเสิร์ฟจาก root ของเว็บ ไม่ได้มี /public อยู่ใน URL
-    s.src = './vendor/zxing.js';
+    s.src = './public/vendor/zxing.js';
     s.onload = () => res(window.ZXing);
     s.onerror = () => rej(new Error('โหลดตัวอ่านบาร์โค้ดไม่สำเร็จ'));
     document.head.appendChild(s);
