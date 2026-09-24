@@ -74,6 +74,12 @@ function thaiNow() {
   }).format(new Date()) };
 }
 
+function thaiDateOffset(days: number) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date(Date.now() + days * 86400000));
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
@@ -92,8 +98,22 @@ Deno.serve(async (req) => {
         return json({ error: 'ส่งแจ้งเตือนได้เฉพาะสิทธิ์หัวหน้างานขึ้นไป' }, 403);
     }
 
+    // งาน cron เรียกโดยไม่มี channel ส่วนการกดส่งทันทีจะส่ง channel มาเสมอ
+    const { data: notifyConfig } = await admin.from('settings').select('value').eq('key', 'notify_config').maybeSingle();
+    const scheduled = isCron && !body.channel;
+    let channel = body.channel || notifyConfig?.value?.channel || 'line';
+    let reportDate = body.date ?? null;
+    if (scheduled) {
+      const now = thaiNow();
+      if (!notifyConfig?.value?.time || notifyConfig.value.enabled === false || notifyConfig.value.time !== now.time)
+        return json({ ok: true, skipped: 'ยังไม่ถึงเวลาที่ตั้งไว้' });
+      const { data: lastSent } = await admin.from('settings').select('value').eq('key', 'notify_last_sent').maybeSingle();
+      if (lastSent?.value?.date === now.date) return json({ ok: true, skipped: 'ส่งวันนี้แล้ว' });
+      reportDate = thaiDateOffset(-1);
+    }
+
     const { data: rawSummary, error } = await admin.rpc('daily_summary', {
-      p_date: body.date ?? null, p_location: body.location_id ?? null,
+      p_date: reportDate, p_location: body.location_id ?? null,
     });
     if (error) return json({ error: error.message }, 500);
     const sum = { ...emptySummary(), ...(rawSummary || {}) };
@@ -101,18 +121,6 @@ Deno.serve(async (req) => {
 
     const { data: shopRow } = await admin.from('settings').select('value').eq('key', 'shopName').maybeSingle();
     const opts = { shopName: shopRow?.value ?? 'Siatoy TCG', locationName: body.location_name || '' };
-
-    // งาน cron เรียกโดยไม่มี channel ส่วนการกดส่งทันทีจะส่ง channel มาเสมอ
-    const { data: notifyConfig } = await admin.from('settings').select('value').eq('key', 'notify_config').maybeSingle();
-    const scheduled = isCron && !body.channel;
-    let channel = body.channel || notifyConfig?.value?.channel || 'line';
-    if (scheduled) {
-      const now = thaiNow();
-      if (!notifyConfig?.value?.time || notifyConfig.value.enabled === false || notifyConfig.value.time !== now.time)
-        return json({ ok: true, skipped: 'ยังไม่ถึงเวลาที่ตั้งไว้' });
-      const { data: lastSent } = await admin.from('settings').select('value').eq('key', 'notify_last_sent').maybeSingle();
-      if (lastSent?.value?.date === now.date) return json({ ok: true, skipped: 'ส่งวันนี้แล้ว' });
-    }
 
     const flex = buildFlexSummary(sum, opts);
     const text = buildTextSummary(sum, opts);
