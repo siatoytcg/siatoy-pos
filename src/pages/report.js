@@ -4,9 +4,19 @@
  */
 import { money, esc, redrawPage, downloadExcel } from '../lib/util.js';
 import { db } from '../lib/store.js';
+import { currentUser, pull, push as syncPush } from '../lib/sync.js';
 import { S } from '../lib/state.js';
 
 let range = 'today', data = null, customFrom = '', customTo = '', seller = 'all', sellers = [];
+let lastRemoteRefresh = 0;
+
+async function refreshRemote() {
+  if (!currentUser() || Date.now() - lastRemoteRefresh < 10000) return;
+  const queued = await syncPush();
+  if (queued.failed) return;
+  const result = await pull();
+  if (result.ok) lastRemoteRefresh = Date.now();
+}
 
 async function exportAll() {
   const ids = new Set(data.all.map(s => s.id));
@@ -47,6 +57,7 @@ const startOf = r => {
 };
 
 async function load() {
+  await refreshRemote();
   const custom = customBounds();
   const from = custom ? custom.from : startOf(range);
   const to = custom ? custom.to : new Date(8640000000000000);
