@@ -19,6 +19,14 @@ export const currentProfile = () => profile;
 export const canSeeCost = () => !!profile && (profile.role === 'supervisor' || profile.role === 'owner');
 export const isOwner = () => !!profile && profile.role === 'owner';
 
+const isJwtError = e => /jwt|token|unauthori[sz]ed|401/i.test(String(e?.message || e || ''));
+async function refreshAuthSession() {
+  if (!sb) throw new Error('ยังไม่ได้ต่อฐานข้อมูลกลาง');
+  const { data, error } = await sb.auth.refreshSession();
+  if (error || !data?.session) throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+  await adoptSession(data.session);
+}
+
 /* บันทึกเหตุการณ์การเข้าใช้งาน  ลงเครื่องเสมอ และส่งขึ้นเซิร์ฟเวอร์ถ้าต่ออยู่
  * ห้ามให้การบันทึกล้มเหลวไปขวางการทำงานของผู้ใช้เด็ดขาด จึงกลืน error ทั้งหมด */
 export async function logEvent(kind, detail) {
@@ -41,27 +49,34 @@ export async function logEvent(kind, detail) {
 /* เรียกฟังก์ชันฝั่งเซิร์ฟเวอร์ (Edge Function) พร้อมโทเคนล็อกอินของผู้ใช้ปัจจุบัน */
 export async function invoke(name, body) {
   if (!sb) throw new Error('ยังไม่ได้ต่อฐานข้อมูลกลาง');
-  const { data, error } = await sb.functions.invoke(name, { body });
-  if (error) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await sb.functions.invoke(name, { body });
+    if (!error) {
+      if (data && data.error) throw new Error(data.error);
+      return data;
+    }
     let msg = error.message;
     try { const j = await error.context?.json?.(); if (j?.error) msg = j.error; } catch (e) {}
+    if (attempt === 0 && isJwtError({ message: msg })) { await refreshAuthSession(); continue; }
     throw new Error(msg);
   }
-  if (data && data.error) throw new Error(data.error);
-  return data;
 }
 
 /* อ่าน/เขียนค่าตั้งค่าบนเซิร์ฟเวอร์ (ใช้กับโทเคนแจ้งเตือน ที่ต้องไม่อยู่ในเครื่องพนักงาน) */
 export async function serverSetting(key, value) {
   if (!sb || !user) return null;
-  if (value === undefined) {
-    const { data, error } = await sb.from('settings').select('value').eq('key', key).maybeSingle();
-    if (error) throw new Error('อ่านค่าตั้งค่าไม่ได้: ' + error.message);
-    return data ? data.value : null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (value === undefined) {
+      const { data, error } = await sb.from('settings').select('value').eq('key', key).maybeSingle();
+      if (!error) return data ? data.value : null;
+      if (attempt === 0 && isJwtError(error)) { await refreshAuthSession(); continue; }
+      throw new Error('อ่านค่าตั้งค่าไม่ได้: ' + error.message);
+    }
+    const { error } = await sb.from('settings').upsert({ key, value, updated_by: user.id }, { onConflict: 'key' });
+    if (!error) return value;
+    if (attempt === 0 && isJwtError(error)) { await refreshAuthSession(); continue; }
+    throw new Error(error.message);
   }
-  const { error } = await sb.from('settings').upsert({ key, value, updated_by: user.id }, { onConflict: 'key' });
-  if (error) throw new Error(error.message);
-  return value;
 }
 
 /* ------------------------------------------- ยืนยันสองชั้น (TOTP/MFA) ---- */
