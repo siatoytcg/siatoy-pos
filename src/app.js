@@ -2,7 +2,7 @@
 import { CONFIG, hasBackend, DEMO } from './config.js';
 import { $, $$, toast } from './lib/util.js';
 import { S } from './lib/state.js';
-import { ensureSeeded, currentLocation, pendingCount, loadSettings, clearPendingQueue } from './lib/store.js';
+import { ensureSeeded, currentLocation, pendingCount, loadSettings, clearPendingQueue, metaGet, metaSet } from './lib/store.js';
 import { posPage } from './pages/pos.js';
 import { billsPage } from './pages/bills.js';
 import { labelsPage } from './pages/labels.js';
@@ -81,6 +81,8 @@ async function render() {
 async function drawSync() {
   const n = await pendingCount();
   const chip = $('#syncChip');
+  const last = await metaGet('lastSync', null);
+  chip.title = last ? 'ซิงค์ล่าสุด ' + new Date(last).toLocaleString('th-TH') : 'ยังไม่เคยซิงค์จาก Supabase';
   if (hasBackend() && !currentUser()) {
     chip.innerHTML = '🔒 <b>ยังไม่ได้ล็อกอิน</b>';
     chip.style.color = 'var(--warn)';
@@ -96,6 +98,31 @@ async function drawSync() {
   } else {
     chip.innerHTML = '✅ <b>ส่งครบแล้ว</b>';
     chip.style.color = 'var(--green)';
+  }
+}
+
+async function syncNow() {
+  const btn = $('#syncNowBtn');
+  if (!btn || btn.disabled) return;
+  if (!hasBackend() || !currentUser()) { toast('ต้องเข้าสู่ระบบก่อนจึงจะซิงค์ได้', 'err'); return; }
+  if (!navigator.onLine) { toast('ขณะนี้ออฟไลน์อยู่ ยังซิงค์ไม่ได้', 'err'); return; }
+  btn.disabled = true;
+  btn.textContent = 'กำลังซิงค์…';
+  try {
+    const sent = await push();
+    if (sent.failed) throw new Error(sent.failed);
+    const pulled = await pull();
+    if (!pulled.ok) throw new Error(pulled.reason || 'ดึงข้อมูลไม่สำเร็จ');
+    await metaSet('lastSync', new Date().toISOString());
+    await drawSync();
+    toast(`ซิงค์สำเร็จ · ส่ง ${sent.sent} รายการ · ดึงข้อมูลแล้ว`, 'ok');
+    await render();
+  } catch (e) {
+    toast('ซิงค์ไม่สำเร็จ · ' + (e.message || e), 'err');
+    await drawSync();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↻ ซิงค์';
   }
 }
 
@@ -131,6 +158,7 @@ async function boot() {
   };
   $('#hambBtn').onclick = () => $('#sidebar').classList.toggle('open');
   $('#helpBtn').onclick = () => openHelp();
+  $('#syncNowBtn').onclick = syncNow;
   $('#lockBtn').onclick = async () => {
     if (await hasPin()) return lockNow('กดล็อกเอง');
     toast('ยังไม่ได้ตั้ง PIN · ตั้งได้ที่หน้าตั้งค่าระบบ', 'err');
