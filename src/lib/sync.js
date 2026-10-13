@@ -382,8 +382,19 @@ export async function push() {
   let sent = 0, failed = null;
   try {
     const queue = await db.outbox.orderBy('seq').toArray();
+    let jwtRetried = false;
     for (const e of queue) {
-      const err = await pushEntry(e);
+      let err = await pushEntry(e);
+      // โทเค็นเก่าหรือโทเค็นที่มีเวลา iat คลาดเคลื่อน ให้ต่ออายุแล้วลองรายการเดิมอีกครั้ง
+      if (err && isJwtError(err) && !jwtRetried) {
+        try {
+          await refreshAuthSession();
+          jwtRetried = true;
+          err = await pushEntry(e);
+        } catch (refreshErr) {
+          err = refreshErr;
+        }
+      }
       if (err) {
         // ข้อผิดพลาดถาวร (ข้อมูลผิดรูป/ถูกปฏิเสธสิทธิ์) อย่าให้ตันคิวตลอดไป
         const permanent = err.code && /^(22|23|42|P0)/.test(String(err.code));
