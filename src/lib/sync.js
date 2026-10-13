@@ -26,7 +26,8 @@ async function refreshAuthSession() {
   if (error || !data?.session) throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
   await adoptSession(data.session);
 }
-const waitForJwtClock = () => new Promise(resolve => setTimeout(resolve, 5000));
+// Supabase Auth/API อาจมี clock skew ชั่วคราว ให้ JWT มีผลก่อนลองคำขอซ้ำ
+const waitForJwtClock = () => new Promise(resolve => setTimeout(resolve, 30000));
 
 /* บันทึกเหตุการณ์การเข้าใช้งาน  ลงเครื่องเสมอ และส่งขึ้นเซิร์ฟเวอร์ถ้าต่ออยู่
  * ห้ามให้การบันทึกล้มเหลวไปขวางการทำงานของผู้ใช้เด็ดขาด จึงกลืน error ทั้งหมด */
