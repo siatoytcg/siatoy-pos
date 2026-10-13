@@ -158,7 +158,8 @@ async function boot() {
   };
   $('#hambBtn').onclick = () => $('#sidebar').classList.toggle('open');
   $('#helpBtn').onclick = () => openHelp();
-  $('#syncNowBtn').onclick = syncNow;
+  const syncNowBtn = $('#syncNowBtn');
+  if (syncNowBtn) syncNowBtn.onclick = syncNow;
   $('#lockBtn').onclick = async () => {
     if (await hasPin()) return lockNow('กดล็อกเอง');
     toast('ยังไม่ได้ตั้ง PIN · ตั้งได้ที่หน้าตั้งค่าระบบ', 'err');
