@@ -2,7 +2,7 @@
 import { CONFIG, hasBackend, DEMO } from './config.js';
 import { $, $$, toast } from './lib/util.js';
 import { S } from './lib/state.js';
-import { ensureSeeded, currentLocation, pendingCount, loadSettings, clearPendingQueue, metaGet, metaSet } from './lib/store.js';
+import { ensureSeeded, currentLocation, pendingCount, blockedItems, loadSettings, clearPendingQueue, metaGet, metaSet } from './lib/store.js';
 import { posPage } from './pages/pos.js';
 import { billsPage } from './pages/bills.js';
 import { labelsPage } from './pages/labels.js';
@@ -81,8 +81,10 @@ async function render() {
 async function drawSync() {
   const n = await pendingCount();
   const chip = $('#syncChip');
-  const last = await metaGet('lastSync', null);
-  chip.title = last ? 'ซิงค์ล่าสุด ' + new Date(last).toLocaleString('th-TH') : 'ยังไม่เคยซิงค์จาก Supabase';
+  const last = await metaGet('lastSync', null) || await metaGet('lastPush', null) || await metaGet('lastPull', null);
+  const blocked = n ? await blockedItems() : [];
+  const detail = blocked.length && blocked[0].lastError ? ' · ข้อผิดพลาด: ' + blocked[0].lastError : '';
+  chip.title = (last ? 'ซิงค์ล่าสุด ' + new Date(last).toLocaleString('th-TH') : 'ยังไม่เคยซิงค์จาก Supabase') + detail;
   if (hasBackend() && !currentUser()) {
     chip.innerHTML = '🔒 <b>ยังไม่ได้ล็อกอิน</b>';
     chip.style.color = 'var(--warn)';
@@ -204,6 +206,7 @@ async function boot() {
     if (beforePull.failed) toast('ส่งข้อมูลที่ค้างไม่สำเร็จ · ' + beforePull.failed, 'err');
     const r = await pull();
     if (!r.ok) toast('ดึงข้อมูลจากเซิร์ฟเวอร์ไม่สำเร็จ · ' + r.reason, 'err');
+    else await metaSet('lastSync', new Date().toISOString());
     try {
       if (await normalizeInitialStock('8859001', 260)) await pull();
     } catch (e) { toast('แก้ข้อมูลตั้งต้นไม่สำเร็จ · ' + e.message, 'err'); }
