@@ -191,7 +191,7 @@ const REF_TABLES = [
   ['members',          'members'],
 ];
 
-export async function pull() {
+async function pullOnce() {
   if (!sb || !user) return { ok: false, reason: 'ยังไม่ได้ล็อกอิน' };
   const counts = {};
   for (const [remote, local] of REF_TABLES) {
@@ -241,6 +241,17 @@ export async function pull() {
 
   await metaSet('lastPull', new Date().toISOString());
   return { ok: true, counts };
+}
+
+// การดึงข้อมูลก็ต้องลองต่ออายุ JWT เช่นเดียวกับคิวขาออก
+export async function pull() {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await pullOnce();
+    if (result.ok || attempt > 0 || !isJwtError({ message: result.reason })) return result;
+    try { await refreshAuthSession(); }
+    catch (e) { return { ok: false, reason: e.message || String(e) }; }
+  }
+  return { ok: false, reason: 'ดึงข้อมูลไม่สำเร็จ' };
 }
 
 /* แก้ข้อมูลตั้งต้นที่ถูกสร้างซ้ำจากคิวรุ่นเก่า ใช้ครั้งเดียวกับสินค้า 8859001 */
