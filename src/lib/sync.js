@@ -27,7 +27,7 @@ async function refreshAuthSession() {
   await adoptSession(data.session);
 }
 // Supabase Auth/API อาจมี clock skew ชั่วคราว ให้ JWT มีผลก่อนลองคำขอซ้ำ
-const waitForJwtClock = () => new Promise(resolve => setTimeout(resolve, 30000));
+const waitForJwtClock = () => new Promise(resolve => setTimeout(resolve, 500));
 
 /* บันทึกเหตุการณ์การเข้าใช้งาน  ลงเครื่องเสมอ และส่งขึ้นเซิร์ฟเวอร์ถ้าต่ออยู่
  * ห้ามให้การบันทึกล้มเหลวไปขวางการทำงานของผู้ใช้เด็ดขาด จึงกลืน error ทั้งหมด */
@@ -51,7 +51,7 @@ export async function logEvent(kind, detail) {
 /* เรียกฟังก์ชันฝั่งเซิร์ฟเวอร์ (Edge Function) พร้อมโทเคนล็อกอินของผู้ใช้ปัจจุบัน */
 export async function invoke(name, body) {
   if (!sb) throw new Error('ยังไม่ได้ต่อฐานข้อมูลกลาง');
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const { data, error } = await sb.functions.invoke(name, { body });
     if (!error) {
       if (data && data.error) throw new Error(data.error);
@@ -247,9 +247,9 @@ async function pullOnce() {
 
 // การดึงข้อมูลก็ต้องลองต่ออายุ JWT เช่นเดียวกับคิวขาออก
 export async function pull() {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const result = await pullOnce();
-    if (result.ok || attempt > 0 || !isJwtError({ message: result.reason })) return result;
+    if (result.ok || attempt >= 2 || !isJwtError({ message: result.reason })) return result;
     try { await refreshAuthSession(); await waitForJwtClock(); }
     catch (e) { return { ok: false, reason: e.message || String(e) }; }
   }
@@ -395,15 +395,15 @@ export async function push() {
   let sent = 0, failed = null;
   try {
     const queue = await db.outbox.orderBy('seq').toArray();
-    let jwtRetried = false;
+    let jwtRetries = 0;
     for (const e of queue) {
       let err = await pushEntry(e);
       // โทเค็นเก่าหรือโทเค็นที่มีเวลา iat คลาดเคลื่อน ให้ต่ออายุแล้วลองรายการเดิมอีกครั้ง
-      if (err && isJwtError(err) && !jwtRetried) {
+      if (err && isJwtError(err) && jwtRetries < 2) {
         try {
           await refreshAuthSession();
           await waitForJwtClock();
-          jwtRetried = true;
+          jwtRetries++;
           err = await pushEntry(e);
         } catch (refreshErr) {
           err = refreshErr;
