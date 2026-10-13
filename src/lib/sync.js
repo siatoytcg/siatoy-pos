@@ -26,6 +26,7 @@ async function refreshAuthSession() {
   if (error || !data?.session) throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
   await adoptSession(data.session);
 }
+const waitForJwtClock = () => new Promise(resolve => setTimeout(resolve, 5000));
 
 /* บันทึกเหตุการณ์การเข้าใช้งาน  ลงเครื่องเสมอ และส่งขึ้นเซิร์ฟเวอร์ถ้าต่ออยู่
  * ห้ามให้การบันทึกล้มเหลวไปขวางการทำงานของผู้ใช้เด็ดขาด จึงกลืน error ทั้งหมด */
@@ -248,7 +249,7 @@ export async function pull() {
   for (let attempt = 0; attempt < 2; attempt++) {
     const result = await pullOnce();
     if (result.ok || attempt > 0 || !isJwtError({ message: result.reason })) return result;
-    try { await refreshAuthSession(); }
+    try { await refreshAuthSession(); await waitForJwtClock(); }
     catch (e) { return { ok: false, reason: e.message || String(e) }; }
   }
   return { ok: false, reason: 'ดึงข้อมูลไม่สำเร็จ' };
@@ -400,6 +401,7 @@ export async function push() {
       if (err && isJwtError(err) && !jwtRetried) {
         try {
           await refreshAuthSession();
+          await waitForJwtClock();
           jwtRetried = true;
           err = await pushEntry(e);
         } catch (refreshErr) {
