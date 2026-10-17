@@ -12,7 +12,24 @@ import { push as syncNow } from '../lib/sync.js';
 
 let products = [], stock = new Map(), members = [], loc = null;
 let cart = [], pay = 'cash', billDiscount = 0, billDiscountType = 'baht',
-    discountReason = '', member = null, cat = 'ทั้งหมด', root = null;
+    discountReason = '', member = null, cat = 'ทั้งหมด', root = null, showHidden = false;
+const HIDDEN_KEY = 'siatoy-hidden-pos-items';
+let hiddenIds = new Set();
+
+function loadHidden() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]');
+    hiddenIds = new Set(Array.isArray(raw) ? raw.map(String) : []);
+  } catch (e) { hiddenIds = new Set(); }
+}
+function saveHidden() {
+  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenIds])); } catch (e) {}
+}
+function toggleHidden(id, hidden) {
+  if (hidden) hiddenIds.add(String(id)); else hiddenIds.delete(String(id));
+  saveHidden(); drawGrid();
+  toast(hidden ? 'ซ่อนสินค้านี้จากหน้าขายแล้ว' : 'แสดงสินค้านี้ในหน้าขายแล้ว', 'ok');
+}
 
 const stockOf = p => stock.get(p.id) || 0;
 const inCart  = id => (cart.find(l => l.product.id === id) || {}).qty || 0;
@@ -29,6 +46,7 @@ function calc(openCard = false) {
 }
 
 async function load() {
+  loadHidden();
   loc = await currentLocation();
   products = (await db.products.toArray()).filter(p => p.is_active !== false);
   members  = await db.members.toArray();
@@ -228,7 +246,8 @@ async function doPay(openCard) {
 
 /* --------------------------------------------------------------- วาด ---- */
 function cardsHTML() {
-  return products.filter(p => cat === 'ทั้งหมด' || p.category === cat).map(p => {
+  return products.filter(p => (cat === 'ทั้งหมด' || p.category === cat) &&
+    (showHidden || !hiddenIds.has(String(p.id)))).map(p => {
     const q = stockOf(p);
     return `<div class="prod" data-code="${p.id}">
       ${q <= 3 ? `<div class="low">เหลือ ${q}</div>` : ''}
@@ -236,6 +255,8 @@ function cardsHTML() {
       <div class="nm">${esc(p.name)}</div>
       <div class="pr">฿ ${money(p.price)}</div>
       <div class="st">คงเหลือ ${q} · ${esc(p.sku)}</div>
+      <button class="btn sm" data-act="${hiddenIds.has(String(p.id)) ? 'unhide' : 'hide'}" data-id="${p.id}">
+        ${hiddenIds.has(String(p.id)) ? 'แสดง' : 'ซ่อน'}</button>
     </div>`;
   }).join('');
 }
@@ -316,6 +337,7 @@ export const posPage = {
             ${['ทั้งหมด', ...CATEGORIES].map(c =>
               `<button class="${c === cat ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}
           </div>
+          <button class="btn sm" id="posHidden">แสดงรายการที่ซ่อนไว้</button>
         </div>
         <div class="prod-grid" id="prodGrid">${cardsHTML()}</div>
       </div>
@@ -348,6 +370,13 @@ export const posPage = {
     // เครื่องยิง USB ทำงานได้แม้เคอร์เซอร์ไม่ได้อยู่ในช่อง และเคอร์เซอร์เด้งกลับช่องเองหลังกดอย่างอื่น
     const detach = attachWedge(takeCode);
     keepFocus(el, '#scanInput');
+    const hiddenBtn = el.querySelector('#posHidden');
+    const updateHiddenButton = () => {
+      if (!hiddenBtn) return;
+      hiddenBtn.classList.toggle('gold', showHidden);
+      hiddenBtn.textContent = `${showHidden ? 'ซ่อนรายการที่เลือก' : 'แสดงรายการที่ซ่อนไว้'}${hiddenIds.size ? ` (${hiddenIds.size})` : ''}`;
+    };
+    hiddenBtn.onclick = () => { showHidden = !showHidden; updateHiddenButton(); drawGrid(); };
 
     el.querySelector('#scanInput').onkeydown = async e => {
       if (e.key !== 'Enter') return;
@@ -363,6 +392,8 @@ export const posPage = {
         el.querySelectorAll('[data-cat]').forEach(b => b.classList.toggle('on', b.dataset.cat === cat));
         drawGrid(); return;
       }
+      const hide = e.target.closest('[data-act="hide"], [data-act="unhide"]');
+      if (hide) { toggleHidden(hide.dataset.id, hide.dataset.act === 'hide'); updateHiddenButton(); return; }
       const card = e.target.closest('[data-code]');
       if (card) { add(products.find(p => p.id === card.dataset.code)); return; }
 

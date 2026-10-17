@@ -9,22 +9,9 @@ import { hasBackend } from '../config.js';
 import { currentUser, push as syncNow } from '../lib/sync.js';
 
 let products = [], vendors = [], sets = [], stock = new Map(), all = new Map();
-let q = '', cat = 'ทั้งหมด', root = null, loc = null, showHidden = false;
-const HIDDEN_KEY = 'siatoy-hidden-stock-items';
-let hiddenIds = new Set();
-
-function loadHidden() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]');
-    hiddenIds = new Set(Array.isArray(raw) ? raw.map(String) : []);
-  } catch (e) { hiddenIds = new Set(); }
-}
-function saveHidden() {
-  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenIds])); } catch (e) {}
-}
+let q = '', cat = 'ทั้งหมด', root = null, loc = null;
 
 async function load() {
-  loadHidden();
   loc = await currentLocation();
   products = await db.products.toArray();
   vendors  = await db.vendors.toArray();
@@ -39,19 +26,7 @@ function filtered() {
   const low = q.toLowerCase();
   return products.filter(p =>
     (cat === 'ทั้งหมด' || p.category === cat) &&
-    (showHidden || !hiddenIds.has(String(p.id))) &&
     (!low || p.name.toLowerCase().includes(low) || p.sku.includes(low)));
-}
-
-function toggleHidden(id, hidden) {
-  if (hidden) hiddenIds.add(String(id)); else hiddenIds.delete(String(id));
-  saveHidden();
-  if (root) {
-    root.querySelector('#stArea').innerHTML = stockPage.tableHTML();
-    const hb = root.querySelector('#stHidden');
-    if (hb) hb.textContent = `${showHidden ? 'ซ่อนรายการที่เลือก' : 'แสดงรายการที่ซ่อนไว้'}${hiddenIds.size ? ` (${hiddenIds.size})` : ''}`;
-  }
-  toast(hidden ? 'ซ่อนรายการนี้แล้ว' : 'แสดงรายการนี้แล้ว', 'ok');
 }
 
 function editProduct(id) {
@@ -174,7 +149,6 @@ export const stockPage = {
     <div class="flex wrap" style="margin-bottom:12px;gap:10px">
       <input class="inp" id="stQ" style="max-width:280px" placeholder="🔍 ค้นหาชื่อหรือรหัสสินค้า" value="${esc(q)}">
       <div class="seg">${cats.map(c => `<button class="${c === cat ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>
-      <button class="btn sm ${showHidden ? 'gold' : ''}" id="stHidden">${showHidden ? 'ซ่อนรายการที่เลือก' : 'แสดงรายการที่ซ่อนไว้'}${hiddenIds.size ? ` (${hiddenIds.size})` : ''}</button>
     </div>
     <div id="stArea">${stockPage.tableHTML()}</div>`;
   },
@@ -201,10 +175,7 @@ export const stockPage = {
           <td class="num">${here <= 3 ? `<span class="tag red">${here}</span>` : here}</td>
           <td class="num">${tot}</td>
           <td class="num">${money(p.price * tot)}</td>
-          <td class="num"><button class="btn sm sup-up" data-edit="${p.id}">แก้ไข</button>
-            ${hiddenIds.has(String(p.id))
-              ? `<button class="btn sm" data-unhide="${p.id}">แสดง</button>`
-              : `<button class="btn sm" data-hide="${p.id}">ซ่อน</button>`}</td>
+          <td class="num"><button class="btn sm sup-up" data-edit="${p.id}">แก้ไข</button></td>
         </tr>`; }).join('')}</tbody></table></div></div>
     ${list.length ? '' : '<div class="card" style="margin-top:12px"><div class="cart-empty"><span class="big">🔍</span>ไม่พบสินค้าที่ค้นหา</div></div>'}`;
   },
@@ -212,18 +183,10 @@ export const stockPage = {
   mount(el) {
     root = el;
     // วาดใหม่เฉพาะตาราง ช่องค้นหาจึงไม่เสียโฟกัสและเคอร์เซอร์ไม่กระโดด
-    const redraw = () => {
-      el.querySelector('#stArea').innerHTML = stockPage.tableHTML();
-      const hb = el.querySelector('#stHidden');
-      if (hb) {
-        hb.classList.toggle('gold', showHidden);
-        hb.textContent = `${showHidden ? 'ซ่อนรายการที่เลือก' : 'แสดงรายการที่ซ่อนไว้'}${hiddenIds.size ? ` (${hiddenIds.size})` : ''}`;
-      }
-    };
+    const redraw = () => { el.querySelector('#stArea').innerHTML = stockPage.tableHTML(); };
     const inp = el.querySelector('#stQ');
     inp.oninput = e => { q = e.target.value; clearTimeout(inp._t); inp._t = setTimeout(redraw, 200); };
     el.querySelector('#stAdd').onclick = () => editProduct(null);
-    el.querySelector('#stHidden').onclick = () => { showHidden = !showHidden; redraw(); };
     el.addEventListener('click', e => {
       const c = e.target.closest('[data-cat]');
       if (c) {
@@ -231,10 +194,6 @@ export const stockPage = {
         el.querySelectorAll('[data-cat]').forEach(b => b.classList.toggle('on', b.dataset.cat === cat));
         redraw(); return;
       }
-      const hide = e.target.closest('[data-hide]');
-      if (hide) { toggleHidden(hide.dataset.hide, true); return; }
-      const unhide = e.target.closest('[data-unhide]');
-      if (unhide) { toggleHidden(unhide.dataset.unhide, false); return; }
       const ed = e.target.closest('[data-edit]'); if (ed) editProduct(ed.dataset.edit);
     });
   },
