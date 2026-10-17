@@ -51,6 +51,9 @@ async function load() {
   products = (await db.products.toArray()).filter(p => p.is_active !== false);
   members  = await db.members.toArray();
   stock    = await stockMap(loc.id);
+  // การซ่อนใช้ได้เฉพาะสินค้าที่หมดสต๊อกเท่านั้น ถ้ามีของเข้าใหม่ให้แสดงกลับมาอัตโนมัติ
+  for (const id of [...hiddenIds]) if ((stock.get(id) || 0) > 0) hiddenIds.delete(id);
+  saveHidden();
 }
 
 /* ------------------------------------------------------------- ตะกร้า ---- */
@@ -247,16 +250,18 @@ async function doPay(openCard) {
 /* --------------------------------------------------------------- วาด ---- */
 function cardsHTML() {
   return products.filter(p => (cat === 'ทั้งหมด' || p.category === cat) &&
-    (showHidden || !hiddenIds.has(String(p.id)))).map(p => {
+    (showHidden || !hiddenIds.has(String(p.id)) || stockOf(p) > 0)).map(p => {
     const q = stockOf(p);
+    const canHide = q === 0;
+    const isHidden = canHide && hiddenIds.has(String(p.id));
     return `<div class="prod" data-code="${p.id}">
       ${q <= 3 ? `<div class="low">เหลือ ${q}</div>` : ''}
       <div class="thumb">${p.icon || '🃏'}</div>
       <div class="nm">${esc(p.name)}</div>
       <div class="pr">฿ ${money(p.price)}</div>
       <div class="st">คงเหลือ ${q} · ${esc(p.sku)}</div>
-      <button class="btn sm" data-act="${hiddenIds.has(String(p.id)) ? 'unhide' : 'hide'}" data-id="${p.id}">
-        ${hiddenIds.has(String(p.id)) ? 'แสดง' : 'ซ่อน'}</button>
+      ${canHide ? `<button class="btn sm" data-act="${isHidden ? 'unhide' : 'hide'}" data-id="${p.id}">
+        ${isHidden ? 'แสดง' : 'ซ่อน'}</button>` : ''}
     </div>`;
   }).join('');
 }
