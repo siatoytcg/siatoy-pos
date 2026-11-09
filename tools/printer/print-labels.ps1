@@ -36,8 +36,25 @@ if ($ValidateOnly) { Write-Output 'VALIDATED: codes and 107 barcode patterns'; r
 Add-Type -AssemblyName System.Drawing
 . (Join-Path $PSScriptRoot 'label-text.ps1')
 $doc = [Drawing.Printing.PrintDocument]::new()
-$doc.PrinterSettings.PrinterName = $profile.printerName
-if (-not $doc.PrinterSettings.IsValid) { throw 'Printer unavailable' }
+$installedPrinters = @([Drawing.Printing.PrinterSettings]::InstalledPrinters)
+$printerName = [string]$profile.printerName
+if ($installedPrinters -notcontains $printerName) {
+    # Windows may append the USB port (for example "(USB002)") or expose
+    # the ES-9960U under the bundled 4BARCODE driver name. Resolve that alias
+    # instead of failing before a print job is created.
+    $candidate = $installedPrinters |
+        Where-Object { $_ -match '(?i)4BARCODE|4B[- ]?2054|ES[- ]?9960' } |
+        Select-Object -First 1
+    if ($candidate) {
+        $printerName = [string]$candidate
+        Write-Output ('PRINTER ALIAS: profile "{0}" -> installed "{1}"' -f $profile.printerName, $printerName)
+    }
+}
+$doc.PrinterSettings.PrinterName = $printerName
+if (-not $doc.PrinterSettings.IsValid) {
+    $available = if ($installedPrinters.Count) { $installedPrinters -join ', ' } else { '(none)' }
+    throw ('Printer unavailable. Expected "{0}". Installed printers: {1}' -f $profile.printerName, $available)
+}
 $doc.DocumentName = 'Siatoy POS - calibrated labels'
 $doc.PrinterSettings.Copies = 1
 $doc.PrintController = [Drawing.Printing.StandardPrintController]::new()
