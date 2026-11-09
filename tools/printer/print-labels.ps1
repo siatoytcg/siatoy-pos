@@ -51,7 +51,11 @@ if ($installedPrinters -notcontains $printerName) {
     }
 }
 $doc.PrinterSettings.PrinterName = $printerName
-if (-not $doc.PrinterSettings.IsValid) {
+$installedMatch = $installedPrinters | Where-Object { $_ -ieq $printerName } | Select-Object -First 1
+# On some Windows/.NET combinations IsValid can be false even when the queue
+# is installed and shown as Idle in Settings. Trust the installed queue name;
+# use IsValid only as a fallback when no installed match was found.
+if (-not $installedMatch -and -not $doc.PrinterSettings.IsValid) {
     $available = if ($installedPrinters.Count) { $installedPrinters -join ', ' } else { '(none)' }
     throw ('Printer unavailable. Expected "{0}". Installed printers: {1}' -f $profile.printerName, $available)
 }
