@@ -19,6 +19,15 @@ window.addEventListener('message',event=>{
  notify('siatoy:printer-received');
 });
 fetch('/session').then(r=>{if(!r.ok)throw Error('อ่านโปรไฟล์ไม่สำเร็จ');return r.json();}).then(data=>{session=data;const p=data.profile;$('profile').textContent=`${p.printerName} · ${p.labelWidthMm} × ${p.labelHeightMm} มม. · ความกว้าง ${p.barcodeWidthScale*100}% · ขวา ${p.contentOffsetXmm} / ลง ${p.contentOffsetYmm} มม.`;$('print').disabled=!job;}).catch(e=>{$('status').textContent=e.message;});
+async function spoolerAction(action){
+ if(!session)return;
+ if(action==='Clear'&&!confirm('ยืนยันล้างงานพิมพ์ค้างทั้งหมดของเครื่องนี้หรือไม่?'))return;
+ $('repair').disabled=true;$('clear').disabled=true;$('status').textContent=action==='Clear'?'กำลังล้างงานพิมพ์ค้าง…':'กำลังตรวจ/รีสตาร์ท Spooler…';
+ try{const r=await fetch('/spooler',{method:'POST',headers:{'Content-Type':'application/json','X-Print-Token':session.token},body:JSON.stringify({action})});const result=await r.json();if(!r.ok)throw Error(result.error);$('status').textContent=`ดำเนินการแล้ว · Spooler: ${result.status}`;}
+ catch(e){$('status').textContent=e.message+' · ถ้า Windows ขอสิทธิ์ ให้กด Yes';}
+ finally{$('repair').disabled=false;$('clear').disabled=false;}
+}
+$('repair').onclick=()=>spoolerAction('Restart');$('clear').onclick=()=>spoolerAction('Clear');
 $('print').onclick=async()=>{
  if(!session||!job||locked)return;locked=true;$('print').disabled=true;$('status').textContent='กำลังส่งพิมพ์…';
  try{const r=await fetch('/print',{method:'POST',headers:{'Content-Type':'application/json','X-Print-Token':session.token},body:JSON.stringify(job)});const result=await r.json();if(!r.ok)throw Error(result.error);$('status').textContent=`ส่งเข้าคิวแล้ว ${result.labels} ดวง / ${result.rows} แถว`;notify('siatoy:printer-submitted');}

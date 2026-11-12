@@ -26,16 +26,46 @@ async function runJob(job){
   });
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 }
-function createServer({run=runJob}={}){
+const psQuote=value=>`'${String(value).replace(/'/g,"''")}'`;
+function runPowerShell(args){
+ return new Promise((resolve,reject)=>{
+  const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass',...args],{windowsHide:true});
+  let output='';for(const stream of [child.stdout,child.stderr])stream.on('data',b=>{output=(output+b).slice(-4000);});
+  child.on('error',reject);child.on('close',code=>code===0?resolve(output.trim()):reject(Error(output.trim()||`PowerShell exited with code ${code}`)));
+ });
+}
+async function runElevatedSpooler(action,printerName){
+ if(process.platform!=='win32')throw Error('การแก้ Spooler ใช้ได้บน Windows เท่านั้น');
+ const script=path.join(root,'repair-spooler.ps1');
+ const args=`@('-NoProfile','-ExecutionPolicy','Bypass','-File',${psQuote(script)},'-Action',${psQuote(action)},'-PrinterName',${psQuote(printerName)})`;
+ await runPowerShell(['-Command',`Start-Process -FilePath 'powershell.exe' -Verb RunAs -Wait -ArgumentList ${args}`]);
+}
+async function readSpoolerStatus(){
+ if(process.platform!=='win32')return 'Unsupported';
+ return (await runPowerShell(['-Command',"(Get-Service -Name Spooler -ErrorAction Stop).Status"])).trim();
+}
+function createServer({run=runJob,repairSpooler=runElevatedSpooler,readSpooler=readSpoolerStatus}={}){
  const token=crypto.randomBytes(32).toString('hex'),jobs=new Map();let busy=false;
  return http.createServer(async(req,res)=>{
   const host=`127.0.0.1:${req.socket.localPort}`,origin=`http://${host}`;
   const reply=(status,data,type='application/json')=>{res.writeHead(status,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Cross-Origin-Opener-Policy':'unsafe-none'});res.end(typeof data==='string'?data:JSON.stringify(data));};
   if(req.headers.host!==host)return reply(403,{error:'Invalid host'});
   if(req.method==='GET'&&req.url==='/session')return reply(200,{token,profile:readProfile()});
+  if(req.method==='GET'&&req.url==='/spooler'){
+   try{return reply(200,{status:await readSpooler()});}catch(e){return reply(503,{error:e.message});}
+  }
   if(req.method==='GET'&&['/','/bridge.js'].includes(req.url))return reply(200,fs.readFileSync(path.join(root,req.url==='/'?'bridge.html':'bridge.js'),'utf8'),req.url==='/'?'text/html':'text/javascript');
-  if(req.method!=='POST'||req.url!=='/print')return reply(404,{error:'Not found'});
+  if(req.method!=='POST'||!['/print','/spooler'].includes(req.url))return reply(404,{error:'Not found'});
   if(req.headers.origin!==origin||req.headers['x-print-token']!==token)return reply(403,{error:'Invalid origin or token'});
+  if(req.url==='/spooler'){
+   req.setEncoding('utf8');let body='';for await(const chunk of req){body+=chunk;if(body.length>4096)throw Error('Request too large');}
+   try{
+    const input=body?JSON.parse(body):{};
+    if(!['Restart','Clear'].includes(input.action))return reply(400,{error:'Invalid spooler action'});
+    await repairSpooler(input.action,readProfile().printerName);
+    return reply(200,{status:await readSpooler(),action:input.action});
+   }catch(e){return reply(400,{error:e.message});}
+  }
   if(busy)return reply(409,{error:'กำลังส่งงานอื่น กรุณารอ'});
   busy=true;
   try{

@@ -19,7 +19,7 @@ if (-not $node -and -not (Test-Path -LiteralPath $bundledNode)) {
   Fail 'Node.js was not found. Install Node.js LTS or include runtime\node.exe in this package.'
 }
 
-$required = @('server.cjs','bridge.html','bridge.js','print-labels.ps1','label-text.ps1','patterns.json','printer-profile.json','Start-Printer.cmd')
+$required = @('server.cjs','bridge.html','bridge.js','print-labels.ps1','label-text.ps1','patterns.json','printer-profile.json','repair-spooler.ps1','Start-Printer.cmd')
 foreach ($name in $required) {
   $source = Join-Path $SourceRoot $name
   if (-not (Test-Path -LiteralPath $source)) { Fail "Missing package file: $name" }

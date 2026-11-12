@@ -10,7 +10,7 @@ if (-not $Output) { $Output = Join-Path (Split-Path -Parent $root) 'Siatoy-Print
 $stage = Join-Path ([IO.Path]::GetTempPath()) ('siatoy-printer-package-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 try {
-  $include = @('server.cjs','bridge.html','bridge.js','print-labels.ps1','label-text.ps1','patterns.json','printer-profile.json','Start-Printer.cmd','install')
+  $include = @('server.cjs','bridge.html','bridge.js','print-labels.ps1','label-text.ps1','patterns.json','printer-profile.json','repair-spooler.ps1','Start-Printer.cmd','install')
   foreach ($item in $include) { Copy-Item -LiteralPath (Join-Path $root $item) -Destination $stage -Recurse -Force }
   if ($DriverPackage) {
     if (-not (Test-Path -LiteralPath $DriverPackage)) { throw "Driver package not found: $DriverPackage" }
